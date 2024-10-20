@@ -167,7 +167,7 @@ class DataProcessor:
         print("Inserting users...")
         users = [f"({i}, 'user{i}', '123456')" for i in range(10)]
         insert_users = f"""
-            INSERT INTO users (userId, userName, password)
+            INSERT INTO users (userName, password)
             VALUES {', '.join(users)};
             """
         self.conn.execute(insert_users)
@@ -175,7 +175,7 @@ class DataProcessor:
         print("Inserting reviews...")
         reviews = [f"({i}, {i}, '{self.recipe_ids[i]}', 'Tasty Recipe', 'I really like this recipe', 0)" for i in range(10)]
         insert_reviews = f"""
-            INSERT INTO reviews (reviewId, userId, recipeId, title, text, timestamp)
+            INSERT INTO reviews (reviewId, userName, recipeId, title, text, timestamp)
             VALUES {', '.join(reviews)};
             """
         self.conn.execute(insert_reviews)
@@ -204,7 +204,7 @@ class DataProcessor:
         print("Inserting likes...")
         likes = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
         insert_likes = f"""
-            INSERT INTO likes (userId, recipeId)
+            INSERT INTO likes (userName, recipeId)
             VALUES {', '.join(likes)};
             """
         self.conn.execute(insert_likes)
@@ -212,7 +212,7 @@ class DataProcessor:
         print("Inserting owns...")
         owns = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
         insert_owns = f"""
-            INSERT INTO likes (userId, recipeId)
+            INSERT INTO owns (userName, recipeId)
             VALUES {', '.join(owns)};
             """
         self.conn.execute(insert_owns)
