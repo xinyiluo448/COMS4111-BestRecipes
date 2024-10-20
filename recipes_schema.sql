@@ -8,7 +8,7 @@ CREATE TABLE Recipes
 (recipeId VARCHAR(40) NOT NULL, 
  title VARCHAR(100) NOT NULL, 
  yield FLOAT DEFAULT 1.0 NOT NULL CHECK (yield > 0),, 
- ingredientLines TEXT NOT NULL, 
+ text TEXT NOT NULL, 
  calories INTEGER CHECK (calories >= 0), 
  PRIMARY KEY(recipeId),
  UNIQUE(title)); 
