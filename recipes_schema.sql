@@ -19,7 +19,8 @@ CREATE TABLE Ingredients
  text TEXT NOT NULL, 
  quantity FLOAT NOT NULL CHECK (quantity > 0), 
  measure TEXT, 
- weight FLOAT CHECK (weight > 0), 
+ weight FLOAT CHECK (weight > 0),
+ CHECK (weight/quantity>0),
  PRIMARY KEY (foodId));
 
 
