@@ -7,7 +7,7 @@ CREATE TABLE Users
 CREATE TABLE Recipes 
 (recipeId VARCHAR(40) NOT NULL, 
  title VARCHAR(100) NOT NULL, 
- yield INTEGER DEFAULT 1 NOT NULL CHECK (yield > 0), 
+ yield FLOAT DEFAULT 1.0 NOT NULL CHECK (yield > 0),, 
  text TEXT NOT NULL, 
  calories INTEGER CHECK (calories >= 0), 
  PRIMARY KEY(recipeId),
@@ -17,9 +17,9 @@ CREATE TABLE Recipes
 CREATE TABLE Ingredients 
 (foodId VARCHAR(35) NOT NULL, 
  text TEXT NOT NULL, 
- quantity INTEGER NOT NULL CHECK (quantity > 0), 
+ quantity FLOAT NOT NULL CHECK (quantity > 0), 
  measure TEXT, 
- weight INTEGER CHECK (weight IS NULL OR weight >= 0), 
+ weight FLOAT CHECK (weight > 0), 
  PRIMARY KEY (foodId));
 
 
