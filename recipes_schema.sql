@@ -31,7 +31,7 @@ CREATE TABLE Cuisines
 
 
 CREATE TABLE Labels 
-(labelName TEXT NOT NULL CHECK (LENGTH(label) > 0),  
+(labelName TEXT NOT NULL CHECK (LENGTH(labelName) > 0),  
  PRIMARY KEY (labelName));
 
 
@@ -71,8 +71,8 @@ CREATE TABLE Contains_ingredients
 
 CREATE TABLE Contains_labels 
 (recipeId VARCHAR(40), 
- label TEXT, 
- PRIMARY KEY (recipeId, label), 
+ labelName TEXT, 
+ PRIMARY KEY (recipeId, labelName), 
  FOREIGN KEY (recipeId) REFERENCES Recipes ON DELETE CASCADE, 
  FOREIGN KEY (labelName) REFERENCES Labels); 
 
