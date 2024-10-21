@@ -31,12 +31,13 @@ CREATE TABLE Cuisines
 
 
 CREATE TABLE Labels 
-(labelName TEXT NOT NULL CHECK (LENGTH(labelName) > 0),  
+(labelName VARCHAR(20),
+ text TEXT,
  PRIMARY KEY (labelName));
 
 
 CREATE TABLE Reviews 
-(reviewId INTEGER NOT NULL CHECK (reviewId > 0), 
+(reviewId INTEGER NOT NULL CHECK (reviewId >= 0), 
  userName VARCHAR(20) NOT NULL, 
  recipeId VARCHAR(40) NOT NULL, 
  title VARCHAR(50), 
