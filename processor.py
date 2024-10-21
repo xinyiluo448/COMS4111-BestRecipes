@@ -1,6 +1,6 @@
 import requests
 import json
-from sqlalchemy import create_engine
+# from sqlalchemy import create_engine
 
 def fetch_remote_data():
     # https://developer.edamam.com/edamam-docs-recipe-api
@@ -30,8 +30,8 @@ with open('mexican.json', 'r') as f:
 
 class DataProcessor:
     def __init__(self):
-        engine = create_engine('postgresql://user:password@localhost/dbname')
-        self.conn = engine.connect()
+        # engine = create_engine('postgresql://user:password@localhost/dbname')
+        # self.conn = engine.connect()
         self.recipe_ids = []
         self.recipes = []
         self.ingredients = []
@@ -83,7 +83,7 @@ class DataProcessor:
             "Mediterranean": "Follows the Mediterranean dietary guidelines.",
             "Mollusk-Free": "Does not contain any mollusks.",
             "Mustard-Free": "Does not contain mustard or its derivatives.",
-            "No Oil Added": "No additional oil used except what is in the basic ingredients.",
+            "No oil added": "No additional oil used except what is in the basic ingredients.",
             "Paleo": "Excludes grains, legumes, dairy, and processed foods.",
             "Peanut-Free": "No peanuts or products containing peanuts.",
             "Pescatarian": "Contains fish but no other meat products.",
@@ -123,12 +123,13 @@ class DataProcessor:
                 quantity = ingredient["quantity"]
                 measure = ingredient["measure"]
                 weight = ingredient["weight"]
-                self.ingredients.append(f"('{food_id}', '{food_text}', {quantity}, '{measure}', {weight})")
+                self.ingredients.append(f"('{food_id}', '{food_text}')")
                 self.recipe_ingredients.append(f"('{recipe_id}', '{food_id}')")
             
             # cuisine fields
-            cuisine = recipe["cuisineType"]
-            self.recipe_cuisines.append(f"('{recipe_id}', '{cuisine}')")
+            cuisines = recipe["cuisineType"]
+            for cuisine in cuisines:
+                self.recipe_cuisines.append(f"('{recipe_id}', '{cuisine}')")
             
             # label fields
             for label in recipe["dietLabels"] + recipe["healthLabels"]:
@@ -140,21 +141,21 @@ class DataProcessor:
             #print(self.labels)
 
     def initialize_db(self):
-        print("Inserting labels...")
-        labels = [f"('{label}', '{description}')" for label, description in self.labels.items()]
-        insert_labels = f"""
-            INSERT INTO cuisines (labelName, text)
-            VALUES {', '.join(labels)};
-            """
-        self.conn.execute(insert_labels)
+        # print("Inserting labels...")
+        # labels = [f"('{label}', '{description}')" for label, description in self.labels.items()]
+        # insert_labels = f"""
+        #     INSERT INTO cuisines (labelName, text)
+        #     VALUES {', '.join(labels)};
+        #     """
+        # self.conn.execute(insert_labels)
         
-        print("Inserting cuisine...")
-        cuisines = [f"('{cuisine}', '{description}')" for cuisine, description in self.cuisines.items()]
-        insert_cuisines = f"""
-            INSERT INTO cuisines (cuisineName, text)
-            VALUES {', '.join(cuisines)};
-            """
-        self.conn.execute(insert_cuisines)
+        # print("Inserting cuisine...")
+        # cuisines = [f"('{cuisine}', '{description}')" for cuisine, description in self.cuisines.items()]
+        # insert_cuisines = f"""
+        #     INSERT INTO cuisines (cuisineName, text)
+        #     VALUES {', '.join(cuisines)};
+        #     """
+        # self.conn.execute(insert_cuisines)
 
         print("Inserting recipes...")
         insert_recipes = f"""
@@ -162,62 +163,78 @@ class DataProcessor:
             VALUES {', '.join(self.recipes)}
             ON CONFLICT (recipeId) DO NOTHING;
             """
-        self.conn.execute(insert_recipes)
+        # self.conn.execute(insert_recipes)
+
+        print("Inserting ingredients...")
+        insert_ingredients = f"""
+            INSERT INTO ingredients (foodId, food)
+            VALUES {', '.join(self.ingredients)}
+            ON CONFLICT (foodId) DO NOTHING;
+            """
         
         print("Inserting users...")
-        users = [f"({i}, 'user{i}', '123456')" for i in range(10)]
+        users = [f"('user{i}', '123456')" for i in range(10)]
         insert_users = f"""
             INSERT INTO users (userName, password)
             VALUES {', '.join(users)};
             """
-        self.conn.execute(insert_users)
+        # self.conn.execute(insert_users)
         
         print("Inserting reviews...")
-        reviews = [f"({i}, {i}, '{self.recipe_ids[i]}', 'Tasty Recipe', 'I really like this recipe', 0)" for i in range(10)]
+        reviews = [f"({i}, 'user{i}', '{self.recipe_ids[i]}', 'Tasty Recipe', 'Great recipe', '2024-10-20 14:30:00')" for i in range(10)]
         insert_reviews = f"""
             INSERT INTO reviews (reviewId, userName, recipeId, title, text, timestamp)
             VALUES {', '.join(reviews)};
             """
-        self.conn.execute(insert_reviews)
+        # self.conn.execute(insert_reviews)
 
         print("Inserting contain_labels...")
-        insert_contain_labels = f"""
-            INSERT INTO Contains_labels (recipeId, labelName)
-            VALUES {', '.join(self.recipe_labels)};
-            """
-        self.conn.execute(insert_contain_labels)
+        insert_contain_labels = f"INSERT INTO Contains_labels (recipeId, labelName) VALUES {', '.join(self.recipe_labels)};"
+        # self.conn.execute(insert_contain_labels)
 
         print("Inserting contain_cuisines...")
         insert_contain_cuisines = f"""
             INSERT INTO Contains_cuisines (recipeId, cuisineName)
             VALUES {', '.join(self.recipe_cuisines)};
             """
-        self.conn.execute(insert_contain_cuisines)
+        # self.conn.execute(insert_contain_cuisines)
 
         print("Inserting contain_ingredients...")
         insert_contain_ingredients = f"""
             INSERT INTO Contains_ingredients (recipeId, foodId)
             VALUES {', '.join(self.recipe_ingredients)};
             """
-        self.conn.execute(insert_contain_ingredients)
+        # self.conn.execute(insert_contain_ingredients)
 
         print("Inserting likes...")
-        likes = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
+        likes = [f"('user{i}', '{self.recipe_ids[i]}')" for i in range(10)]
         insert_likes = f"""
             INSERT INTO likes (userName, recipeId)
             VALUES {', '.join(likes)};
             """
-        self.conn.execute(insert_likes)
+        # self.conn.execute(insert_likes)
 
         print("Inserting owns...")
-        owns = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
+        owns = [f"('user{i}', '{self.recipe_ids[i]}')" for i in range(10)]
         insert_owns = f"""
             INSERT INTO owns (userName, recipeId)
             VALUES {', '.join(owns)};
             """
-        self.conn.execute(insert_owns)
+        # self.conn.execute(insert_owns)
+
+        with open('insert_ingredients.txt', 'a') as file:
+            # file.write(insert_users)
+            # file.write(insert_reviews)
+            # file.write(insert_contain_labels)
+            # file.write(insert_ingredients)
+            # file.write(insert_contain_ingredients)
+            # file.write(insert_contain_cuisines)
+            # file.write(insert_likes)
+            # file.write(insert_owns)
+            pass
 
         print("Finished inserting all data!")
 
 processor = DataProcessor()
 processor.process_records(data)
+processor.initialize_db()
