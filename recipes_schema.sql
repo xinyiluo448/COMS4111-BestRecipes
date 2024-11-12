@@ -17,10 +17,6 @@ CREATE TABLE Recipes
 CREATE TABLE Ingredients 
 (foodId VARCHAR(35) NOT NULL, 
  food TEXT NOT NULL, 
- quantity FLOAT NOT NULL CHECK (quantity > 0), 
- measure TEXT, 
- weight FLOAT CHECK (weight > 0),
- CHECK (weight/quantity>0),
  PRIMARY KEY (foodId));
 
 
@@ -31,12 +27,13 @@ CREATE TABLE Cuisines
 
 
 CREATE TABLE Labels 
-(labelName TEXT NOT NULL CHECK (LENGTH(label) > 0),  
+(labelName VARCHAR(20),
+ text TEXT,
  PRIMARY KEY (labelName));
 
 
 CREATE TABLE Reviews 
-(reviewId INTEGER NOT NULL CHECK (reviewId > 0), 
+(reviewId INTEGER NOT NULL CHECK (reviewId >= 0), 
  userName VARCHAR(20) NOT NULL, 
  recipeId VARCHAR(40) NOT NULL, 
  title VARCHAR(50), 
@@ -71,8 +68,8 @@ CREATE TABLE Contains_ingredients
 
 CREATE TABLE Contains_labels 
 (recipeId VARCHAR(40), 
- label TEXT, 
- PRIMARY KEY (recipeId, label), 
+ labelName TEXT, 
+ PRIMARY KEY (recipeId, labelName), 
  FOREIGN KEY (recipeId) REFERENCES Recipes ON DELETE CASCADE, 
  FOREIGN KEY (labelName) REFERENCES Labels); 
 

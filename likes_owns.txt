@@ -1,0 +1,6 @@
+
+INSERT INTO likes (userName, recipeId)
+VALUES ('user0', 'recipe_c32d477d4eeb4ed698b3df1fce090fbb'), ('user1', 'recipe_d0424ad83d14f9ca53d0a409e9382bb4'), ('user2', 'recipe_bbd9c0cbaca6e37e796861e1f7215d5d'), ('user3', 'recipe_9495129f2ff3c5482096dbfc213f469e'), ('user4', 'recipe_36c31d8d7e1a361d237f2723c21da78a'), ('user5', 'recipe_3e8d6d478a5b4ad6a63b61575feded2d'), ('user6', 'recipe_9f768441d41245ff84c5f63db6159cf6'), ('user7', 'recipe_c0125cf44cb7f50f0d6f002b32ed6458'), ('user8', 'recipe_f74888623e8c4aa8b0118da34afb7f1a'), ('user9', 'recipe_263cf139b0fd45e3b637dfd0eb6c1b40');
+
+INSERT INTO owns (userName, recipeId)
+VALUES ('user0', 'recipe_c32d477d4eeb4ed698b3df1fce090fbb'), ('user1', 'recipe_d0424ad83d14f9ca53d0a409e9382bb4'), ('user2', 'recipe_bbd9c0cbaca6e37e796861e1f7215d5d'), ('user3', 'recipe_9495129f2ff3c5482096dbfc213f469e'), ('user4', 'recipe_36c31d8d7e1a361d237f2723c21da78a'), ('user5', 'recipe_3e8d6d478a5b4ad6a63b61575feded2d'), ('user6', 'recipe_9f768441d41245ff84c5f63db6159cf6'), ('user7', 'recipe_c0125cf44cb7f50f0d6f002b32ed6458'), ('user8', 'recipe_f74888623e8c4aa8b0118da34afb7f1a'), ('user9', 'recipe_263cf139b0fd45e3b637dfd0eb6c1b40');

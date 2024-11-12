@@ -83,7 +83,7 @@ class DataProcessor:
             "Mediterranean": "Follows the Mediterranean dietary guidelines.",
             "Mollusk-Free": "Does not contain any mollusks.",
             "Mustard-Free": "Does not contain mustard or its derivatives.",
-            "No Oil Added": "No additional oil used except what is in the basic ingredients.",
+            "No oil added": "No additional oil used except what is in the basic ingredients.",
             "Paleo": "Excludes grains, legumes, dairy, and processed foods.",
             "Peanut-Free": "No peanuts or products containing peanuts.",
             "Pescatarian": "Contains fish but no other meat products.",
@@ -123,12 +123,13 @@ class DataProcessor:
                 quantity = ingredient["quantity"]
                 measure = ingredient["measure"]
                 weight = ingredient["weight"]
-                self.ingredients.append(f"('{food_id}', '{food_text}', {quantity}, '{measure}', {weight})")
+                self.ingredients.append(f"('{food_id}', '{food_text}')")
                 self.recipe_ingredients.append(f"('{recipe_id}', '{food_id}')")
             
             # cuisine fields
-            cuisine = recipe["cuisineType"]
-            self.recipe_cuisines.append(f"('{recipe_id}', '{cuisine}')")
+            cuisines = recipe["cuisineType"]
+            for cuisine in cuisines:
+                self.recipe_cuisines.append(f"('{recipe_id}', '{cuisine}')")
             
             # label fields
             for label in recipe["dietLabels"] + recipe["healthLabels"]:
