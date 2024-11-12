@@ -168,11 +168,7 @@ class DataProcessor:
         # self.insert_labels()
         # self.insert_cuisines()
         self.insert_recipes()
-        
-        pass
-
-        
-        
+ 
         # print("Inserting users...")
         # users = [f"({i}, 'user{i}', '123456')" for i in range(10)]
         # insert_users = f"""
@@ -227,8 +223,17 @@ class DataProcessor:
         # self.conn.execute(insert_owns)
 
         # print("Finished inserting all data!")
+    def select(self):
+        cursor = self.conn.execute(text("select * from labels"))
+        self.conn.commit()
+        record = cursor.fetchone()
+        while record:
+            print(record)
+            record = cursor.fetchone()
+        
 
 processor = DataProcessor()
-processor.process_records(data)
+processor.select()
+# processor.process_records(data)
 # print(processor.recipes)
-processor.initialize_db()
+# processor.initialize_db()
