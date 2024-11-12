@@ -1,6 +1,6 @@
 import requests
 import json
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 def fetch_remote_data():
     # https://developer.edamam.com/edamam-docs-recipe-api
@@ -23,14 +23,14 @@ def fetch_remote_data():
     with open('mexican.json', 'w') as f:
         json.dump(data, f, indent=4)  # Write JSON data to a file
 
-# fetch_remote_data()
+fetch_remote_data()
 
 with open('mexican.json', 'r') as f:
     data = json.load(f)  # Load the data back from the file
 
 class DataProcessor:
     def __init__(self):
-        engine = create_engine('postgresql://user:password@localhost/dbname')
+        engine = create_engine('postgresql://ts3585:751429@104.196.222.236/proj1part2')
         self.conn = engine.connect()
         self.recipe_ids = []
         self.recipes = []
@@ -38,7 +38,7 @@ class DataProcessor:
         self.cuisines = {
             "American": "Diverse and hearty, featuring BBQ, burgers, and regional specialties influenced by various immigrant cultures.",
             "Asian": "A broad category encompassing diverse flavors and ingredients from countries like China, Japan, and India.",
-            "British": "Traditional and comfort-focused, known for dishes like fish and chips, shepherd's pie, and Sunday roasts.",
+            "British": "Traditional and comfort-focused, known for dishes like fish and chips, shepherd''s pie, and Sunday roasts.",
             "Caribbean": "Vibrant and spicy, featuring tropical ingredients like coconut and jerk spices, with influences from African, Spanish, and Indigenous cultures.",
             "Central Europe": "Rich and hearty, often featuring meats, potatoes, and dumplings, with influences from German, Austrian, and Hungarian cuisines.",
             "Chinese": "Diverse and flavorful, emphasizing rice, noodles, and a variety of cooking techniques with regional specialties.",
@@ -139,85 +139,95 @@ class DataProcessor:
             #print(self.cuisines)
             #print(self.labels)
 
-    def initialize_db(self):
+    def insert_labels(self):
         print("Inserting labels...")
         labels = [f"('{label}', '{description}')" for label, description in self.labels.items()]
-        insert_labels = f"""
-            INSERT INTO cuisines (labelName, text)
-            VALUES {', '.join(labels)};
-            """
+        insert_labels = text(f"INSERT INTO labels (labelName, text) VALUES {', '.join(labels)};")
         self.conn.execute(insert_labels)
-        
+    
+    def insert_cuisines(self):
         print("Inserting cuisine...")
         cuisines = [f"('{cuisine}', '{description}')" for cuisine, description in self.cuisines.items()]
-        insert_cuisines = f"""
-            INSERT INTO cuisines (cuisineName, text)
-            VALUES {', '.join(cuisines)};
-            """
+        insert_cuisines = text(f"INSERT INTO cuisines (cuisineName, text) VALUES {', '.join(cuisines)};")
+        print(insert_cuisines)
         self.conn.execute(insert_cuisines)
+        print("Finished!")
 
+    def insert_recipes(self):
         print("Inserting recipes...")
-        insert_recipes = f"""
+        insert_recipes = text(f"""
             INSERT INTO recipes (recipeId, title, yield, text, calories)
             VALUES {', '.join(self.recipes)}
             ON CONFLICT (recipeId) DO NOTHING;
-            """
-        self.conn.execute(insert_recipes)
+            """)
+        print(insert_recipes)
+        # self.conn.execute(insert_recipes)
+
+    def initialize_db(self):
+        # self.insert_labels()
+        # self.insert_cuisines()
+        self.insert_recipes()
         
-        print("Inserting users...")
-        users = [f"({i}, 'user{i}', '123456')" for i in range(10)]
-        insert_users = f"""
-            INSERT INTO users (userName, password)
-            VALUES {', '.join(users)};
-            """
-        self.conn.execute(insert_users)
+        pass
+
         
-        print("Inserting reviews...")
-        reviews = [f"({i}, {i}, '{self.recipe_ids[i]}', 'Tasty Recipe', 'I really like this recipe', 0)" for i in range(10)]
-        insert_reviews = f"""
-            INSERT INTO reviews (reviewId, userName, recipeId, title, text, timestamp)
-            VALUES {', '.join(reviews)};
-            """
-        self.conn.execute(insert_reviews)
+        
+        # print("Inserting users...")
+        # users = [f"({i}, 'user{i}', '123456')" for i in range(10)]
+        # insert_users = f"""
+        #     INSERT INTO users (userName, password)
+        #     VALUES {', '.join(users)};
+        #     """
+        # self.conn.execute(insert_users)
+        
+        # print("Inserting reviews...")
+        # reviews = [f"({i}, {i}, '{self.recipe_ids[i]}', 'Tasty Recipe', 'I really like this recipe', 0)" for i in range(10)]
+        # insert_reviews = f"""
+        #     INSERT INTO reviews (reviewId, userName, recipeId, title, text, timestamp)
+        #     VALUES {', '.join(reviews)};
+        #     """
+        # self.conn.execute(insert_reviews)
 
-        print("Inserting contain_labels...")
-        insert_contain_labels = f"""
-            INSERT INTO Contains_labels (recipeId, labelName)
-            VALUES {', '.join(self.recipe_labels)};
-            """
-        self.conn.execute(insert_contain_labels)
+        # print("Inserting contain_labels...")
+        # insert_contain_labels = f"""
+        #     INSERT INTO Contains_labels (recipeId, labelName)
+        #     VALUES {', '.join(self.recipe_labels)};
+        #     """
+        # self.conn.execute(insert_contain_labels)
 
-        print("Inserting contain_cuisines...")
-        insert_contain_cuisines = f"""
-            INSERT INTO Contains_cuisines (recipeId, cuisineName)
-            VALUES {', '.join(self.recipe_cuisines)};
-            """
-        self.conn.execute(insert_contain_cuisines)
+        # print("Inserting contain_cuisines...")
+        # insert_contain_cuisines = f"""
+        #     INSERT INTO Contains_cuisines (recipeId, cuisineName)
+        #     VALUES {', '.join(self.recipe_cuisines)};
+        #     """
+        # self.conn.execute(insert_contain_cuisines)
 
-        print("Inserting contain_ingredients...")
-        insert_contain_ingredients = f"""
-            INSERT INTO Contains_ingredients (recipeId, foodId)
-            VALUES {', '.join(self.recipe_ingredients)};
-            """
-        self.conn.execute(insert_contain_ingredients)
+        # print("Inserting contain_ingredients...")
+        # insert_contain_ingredients = f"""
+        #     INSERT INTO Contains_ingredients (recipeId, foodId)
+        #     VALUES {', '.join(self.recipe_ingredients)};
+        #     """
+        # self.conn.execute(insert_contain_ingredients)
 
-        print("Inserting likes...")
-        likes = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
-        insert_likes = f"""
-            INSERT INTO likes (userName, recipeId)
-            VALUES {', '.join(likes)};
-            """
-        self.conn.execute(insert_likes)
+        # print("Inserting likes...")
+        # likes = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
+        # insert_likes = f"""
+        #     INSERT INTO likes (userName, recipeId)
+        #     VALUES {', '.join(likes)};
+        #     """
+        # self.conn.execute(insert_likes)
 
-        print("Inserting owns...")
-        owns = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
-        insert_owns = f"""
-            INSERT INTO owns (userName, recipeId)
-            VALUES {', '.join(owns)};
-            """
-        self.conn.execute(insert_owns)
+        # print("Inserting owns...")
+        # owns = [f"({i}, '{self.recipe_ids[i]}')" for i in range(10)]
+        # insert_owns = f"""
+        #     INSERT INTO owns (userName, recipeId)
+        #     VALUES {', '.join(owns)};
+        #     """
+        # self.conn.execute(insert_owns)
 
-        print("Finished inserting all data!")
+        # print("Finished inserting all data!")
 
 processor = DataProcessor()
 processor.process_records(data)
+# print(processor.recipes)
+processor.initialize_db()
