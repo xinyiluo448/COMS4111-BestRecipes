@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipes</title>
+</head>
+<body>
+    <h1>{{ recipe.title }}</h1>
+    <p><strong>Labels:</strong> 
+        {% if labels %}
+            <i>
+                {% for label in labels %}
+                    {{ label.labelname }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </i>
+        {% else %}
+            No labels available.
+        {% endif %}
+    </p>
+    <p><strong>Cuisine:</strong> {{ cuisine.cuisinename }}</p>
+    <p><strong>Yield:</strong> {{ recipe.yield }}</p>
+    <p><strong>Calories:</strong> {{ recipe.calories }}</p>
+    <p><strong>Ingredients:</strong></p>
+    <ul>
+        {% if ingredients %}
+            {% for ingredient in ingredients %}
+                <li><i>{{ ingredient.food }}</i></li>
+            {% endfor %}
+        {% else %}
+            <p>No ingredients available.</p>
+        {% endif %}
+    </ul>
+    <p><strong>Description and Insturctions:</strong></p>
+    <p>{{ recipe.text }}</p>
+    <button id="like-button" onclick="likeRecipe()">Like</button>
+    <p>Likes: <span id="like-count">{{ like_count }}</span></p>
+
+    <script>
+        function likeRecipe() {
+            fetch('/like/{{ recipe.recipeid }}', {
+                method: 'POST',
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Update the like count on the page
+                document.getElementById('like-count').textContent = data;
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

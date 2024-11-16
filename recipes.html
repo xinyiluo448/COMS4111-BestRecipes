@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipes</title>
+</head>
+<body>
+    <h1>Recipes</h1>
+
+    {% if recipes %}
+        <ul>
+            {% for recipe in recipes %}
+                <li>
+                    <h2><a href="{{ url_for('recipe', recipe_id=recipe.recipeid) }}">{{ recipe.title }}</a></h2>
+                    <h2>{{ recipe.title }}</h2>
+                    <p><strong>Yield:</strong> {{ recipe.yield }}</p>
+                    <p><strong>Calories:</strong> {{ recipe.calories }}</p>
+                    <p>{{ recipe.text }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No recipes available.</p>
+    {% endif %}
+</body>
+</html>
