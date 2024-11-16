@@ -46,8 +46,8 @@ CREATE TABLE Reviews
 
 CREATE TABLE Owns 
 (userName VARCHAR(20),
- recipeId VARCHAR(40), 
- PRIMARY KEY (userName, recipeId), 
+ recipeId VARCHAR(40) NOT NULL, 
+ PRIMARY KEY (recipeId), 
  FOREIGN KEY (userName) REFERENCES Users, 
  FOREIGN KEY (recipeId) REFERENCES Recipes ON DELETE CASCADE); 
 
