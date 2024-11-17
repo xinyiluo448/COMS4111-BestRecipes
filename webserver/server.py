@@ -127,7 +127,23 @@ def profile(username = None):
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):
-	pass
+	recipe = g.conn.execute(
+		text('SELECT * FROM recipes WHERE recipeid = :recipeid'),
+		{'recipeid': recipe_id}
+	).fetchone()
+	like_count = g.conn.execute(
+		text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
+		{'recipeid': recipe_id}
+	).scalar()
+	ingredients = g.conn.execute(text('SELECT food FROM ingredients WHERE foodid IN (SELECT foodid FROM contains_ingredients WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
+	labels = g.conn.execute(text('SELECT labelname FROM labels WHERE labelname IN (SELECT labelname FROM contains_labels WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
+	cuisine = g.conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchone()
+	return render_template('recipe.html',
+							recipe=recipe,
+							labels=labels,
+							ingredients=ingredients,
+							cuisine=cuisine,
+							like_count=like_count)
 
 if __name__ == "__main__":
 	import click
@@ -136,7 +152,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8995, type=int)
+	@click.argument('PORT', default=8994, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))

@@ -171,30 +171,6 @@ def insert_recipe():
         cuisines.append(row)
     conn1.close()
     return render_template('insertrecipe.html', labels=labels, cuisines=cuisines)
-@app.route('/recipe/<recipe_id>')
-def recipe(recipe_id):
-    try:
-        conn = db.connect()
-        recipe = conn.execute(
-            text('SELECT * FROM recipes WHERE recipeid = :recipeid'),
-            {'recipeid': recipe_id}
-        ).fetchone()
-        like_count = conn.execute(
-            text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
-            {'recipeid': recipe_id}
-        ).scalar()
-        ingredients = conn.execute(text('SELECT food FROM ingredients WHERE foodid IN (SELECT foodid FROM contains_ingredients WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
-        labels = conn.execute(text('SELECT labelname FROM labels WHERE labelname IN (SELECT labelname FROM contains_labels WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
-        cuisine = conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchone()
-        conn.close()
-        return render_template('recipe.html',
-                               recipe=recipe,
-                               labels=labels,
-                               ingredients=ingredients,
-                               cuisine=cuisine,
-                               like_count=like_count)
-    except Exception as e:
-        return f"Error: {e}"
         
 @app.route('/like/<recipe_id>', methods=['POST'])
 def like_recipe(recipe_id):
