@@ -223,9 +223,56 @@ def like_recipe(recipe_id):
 # delete recipe but if you the owner (add delete button on frontend)
 # write a review + display existing reviews
 #search functionality:
-@app.route('/recipesearch')
-def search_recipe_simple(recipe_id):
-    print("hello")
+@app.route('/search')
+def search_page():
+     statement = select(cuisines.c.cuisinename)
+     statement2= select(labels.c.labelname)
+     with db.connect() as connection:
+        cursor= connection.execute(statement)
+        cuisines_list= [{'cuisinename': row.cuisinename} for row in cursor]
+        cursor= connection.execute(statement2)
+        labels_list= [{'labelname': row.labelname} for row in cursor]
+     return render_template('recipesearch.html',cuisines=cuisines_list,labels=labels_list)
+@app.route('/search-recipe', methods=['GET'])
+def search_recipe():
+    conn= db.connect()
+    search_term= request.args.get('searchTerm', '').strip()
+    selected_cuisines= request.args.getlist('cuisines')
+    selected_labels= request.args.getlist('labels')
+    selected_ingredients = request.args.getlist('ingredients')
+    min_likes = request.args.get('min_likes', type=int)
+    cuisines_found= []
+    recipes_found= []
+    labels_found=[]
+    ingredients_found = []
+    statement= select(recipes.c.recipeid, recipes.c.title, recipes.c['yield'], recipes.c.calories, recipes.c.text)\
+        .where(recipes.c.title.ilike(f"%{search_term}%"))
+    if selected_cuisines:
+        statement= statement.join(contains_cuisines, contains_cuisines.c.recipeid == recipes.c.recipeid)\
+            .where(contains_cuisines.c.cuisinename.in_(selected_cuisines))
+    if selected_labels:
+        statement= statement.join(contains_labels, contains_labels.c.recipeid == recipes.c.recipeid)\
+            .where(contains_labels.c.labelname.in_(selected_labels))
+    if min_likes:
+        statement = statement.join(
+            likes, likes.c.recipeid == recipes.c.recipeid
+        ).group_by(recipes.c.recipeid).having(func.count(likes.c.recipeid) >= min_likes)
+    if selected_ingredients:
+        statement = statement.join(contains_ingredients, contains_ingredients.c.recipeid == recipes.c.recipeid)\
+            .join(ingredients, ingredients.c.foodid == contains_ingredients.c.foodid)\
+            .where(ingredients.c.food.in_(selected_ingredients))
+    cursor= conn.execute(statement)
+    recipes_found= cursor.fetchall()
+    cuisines_query= select(cuisines.c.cuisinename)
+    labels_query= select(labels.c.labelname)
+    ingredients_query= select(ingredients.c.food)
+    cuisines_found= conn.execute(cuisines_query).fetchall()
+    labels_found= conn.execute(labels_query).fetchall()
+    ingredients_found= conn.execute(ingredients_query).fetchall()
+    conn.close()
+    return render_template('recipes.html', recipes=recipes_found,cuisines=cuisines_found,labels=labels_found,ingredients=ingredients_found)
 
 app.run(debug=True, host="127.0.0.1", port=5000)
+
+
 
