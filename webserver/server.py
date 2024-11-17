@@ -1,58 +1,20 @@
-
-"""
-Columbia's COMS W4111.001 Introduction to Databases
-Example Webserver
-To run locally:
-	python3 server.py
-Go to http://localhost:8111 in your browser.
-A debugger such as "pdb" may be helpful for debugging.
-Read about it online.
-"""
 import os
-  # accessible as a variable in index.html:
 from sqlalchemy import *
 from sqlalchemy.pool import NullPool
-from flask import Flask, request, render_template, g, redirect, Response, abort, url_for
+from sqlalchemy.exc import IntegrityError
+from flask import Flask, request, render_template, g, redirect, Response, abort
+from flask import url_for, session
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
+app.secret_key = os.urandom(24)
 
 DATABASEURI = "postgresql://ts3585:751429@104.196.222.236/proj1part2"
-
-
-#
-# This line creates a database engine that knows how to connect to the URI above.
-#
 engine = create_engine(DATABASEURI)
-
-#
-# Example of running queries in your database
-# Note that this will probably not work if you already have a table named 'test' in your database, containing meaningful data. This is only an example showing you how to run queries in your database using SQLAlchemy.
-#
 conn = engine.connect()
-
-# The string needs to be wrapped around text()
-
-# conn.execute(text("""CREATE TABLE IF NOT EXISTS test (
-#   id serial,
-#   name text
-# );"""))
-# conn.execute(text("""INSERT INTO test(name) VALUES ('grace hopper'), ('alan turing'), ('ada lovelace');"""))
-
-# To make the queries run, we need to add this commit line
-
-# conn.commit() 
 
 @app.before_request
 def before_request():
-	print("before")
-	"""
-	This function is run at the beginning of every web request
-	(every time you enter an address in the web browser).
-	We use it to setup a database connection that can be used throughout the request.
-
-	The variable g is globally accessible.
-	"""
 	try:
 		g.conn = engine.connect()
 	except:
@@ -62,40 +24,15 @@ def before_request():
 
 @app.teardown_request
 def teardown_request(exception):
-	print("after")
-	"""
-	At the end of the web request, this makes sure to close the database connection.
-	If you don't, the database could run out of memory!
-	"""
 	try:
 		g.conn.close()
-		print("conn closed")
 	except Exception as e:
 		print("Exception: {e}")
 		pass
 
 @app.route('/')
 def index():
-	"""
-	request is a special object that Flask provides to access web request information:
-
-	request.method:   "GET" or "POST"
-	request.form:     if the browser submitted a form, this contains the data in the form
-	request.args:     dictionary of URL arguments, e.g., {a:1, b:2} for http://localhost?a=1&b=2
-
-	See its API: https://flask.palletsprojects.com/en/2.0.x/api/?highlight=incoming%20request%20data
-
-	"""
-
-	# DEBUG: this is debugging code to see what request looks like
-	print(request.args)
-
-
-	#
-	# example of a database query 
-	#
-	# cursor = g.conn.execute(text("SELECT name FROM test"))
-	# g.conn.commit()
+	# print(request.args, request.form, request.method)
 
 	# 2 ways to get results
 
@@ -112,97 +49,41 @@ def index():
 
 	# cursor.close()
 
-	#
-	# Flask uses Jinja templates, which is an extension to HTML where you can
-	# pass data to a template and dynamically generate HTML based on the data
-	# (you can think of it as simple PHP)
-	# documentation: https://realpython.com/primer-on-jinja-templating/
-	#
-	# You can see an example template in templates/index.html
-	#
-	# context are the variables that are passed to the template.
-	# for example, "data" key in the context variable defined below will be
-	# accessible as a variable in index.html:
-	#
-	#     # will print: [u'grace hopper', u'alan turing', u'ada lovelace']
-	#     <div>{{data}}</div>
-	#
-	#     # creates a <div> tag for each element in data
-	#     # will print:
-	#     #
-	#     #   <div>grace hopper</div>
-	#     #   <div>alan turing</div>
-	#     #   <div>ada lovelace</div>
-	#     #
-	#     {% for n in data %}
-	#     <div>{{n}}</div>
-	#     {% endfor %}
-	#
 	context = dict(data = names)
-	print("index")
-
-	#
-	# render_template looks in the templates/ folder for files.
-	# for example, the below file reads template/index.html
-	#
 	return render_template("index.html", **context)
-
-#
-# This is an example of a different path.  You can see it at:
-#
-#     localhost:8111/another
-#
-# Notice that the function name is another() rather than index()
-# The functions for each app.route need to have different names
-#
-@app.route('/another')
-def another():
-	print("another")
-	return render_template("another.html")
-
-
-# Example of adding new data to the database
-@app.route('/add', methods=['POST'])
-def add(): 
-	name = request.form['name']
-	params_dict = {"name":name}
-	g.conn.execute(text('INSERT INTO test(name) VALUES (:name)'), params_dict)
-	g.conn.commit()
-	return redirect('/')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 	if request.method == 'POST':
 		username = request.form['username']
 		try:
-			print("inserting into db")
-			g.conn.execute(text('INSERT INTO Users (username) VALUES (?)'), (username,))
+			g.conn.execute(text('INSERT INTO Users (username) VALUES (:name)'), {"name":username})
 			g.conn.commit()
 			session['username'] = username
 			print("done")
 			return redirect('/')
 		except IntegrityError as e:
-			print("error: {e}")
-			return render_template('register.html', error="Username already exists: {e}.")
+			print("Integrity error: ", e)
+			return render_template('register.html', error=f"Username already exists.")
 
 		except Exception as e:
-			print("error: {e}")
-			return render_template('register.html', error="An error occurred: {e}.")
+			print("error: ", e)
+			return render_template('register.html', error=f"An error occurred: {e}.")
 
 	return render_template('register.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-	print("login")
 	if request.method == 'POST':
 		username = request.form['username']
-		user = g.conn.execute(text('SELECT * FROM Users WHERE username = ?'), (username,)).fetchone()
+		user = g.conn.execute(text('SELECT * FROM Users WHERE username = (:name)'), {"name":username}).fetchone()
+		
 		if user:
-			print(f"User {username} found!")
-			session['username'] = user['username']
+			session['username'] = user[0]
 			return redirect('/')
-	else:
-		return "User not found!"  # You can return a custom error page
+		else:
+			return render_template("login.html", error="User does not exist.")
+
 	return render_template("login.html")
 
 @app.route('/profile/<username>')
@@ -213,7 +94,7 @@ def profile(username):
 	if username is None:
 		return redirect(url_for('login'))
 	else:
-		user = g.conn.execute('SELECT * FROM Users WHERE username = ?', (username,)).fetchone()
+		user = g.conn.execute('SELECT * FROM Users WHERE username = (:name)', {"name":username}).fetchone()
 		return render_template('profile.html', user=user)
 
 
@@ -226,18 +107,6 @@ if __name__ == "__main__":
 	@click.argument('HOST', default='0.0.0.0')
 	@click.argument('PORT', default=8000, type=int)
 	def run(debug, threaded, host, port):
-		"""
-		This function handles command line parameters.
-		Run the server using:
-
-			python3 server.py
-
-		Show the help text using:
-
-			python3 server.py --help
-
-		"""
-
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
 		app.run(host=HOST, port=PORT, debug=debug, threaded=threaded)
