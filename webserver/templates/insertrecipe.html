@@ -1,95 +1,92 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Simple HTML Doc</title>
-        <link rel="stylesheet" type="text/css" href="../static/styles.css"
-    </head>
-    <!--Things to fix: text attribute addition for labels and cuisine-->
-    <!--Things to fix: be able to add in multiple labels from dropdown menu + be able to create multiple-->
-    <body>
-        <h1>
-            Create a recipe!
-        </h1>
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>
+        Create a recipe!
+    </h1>
+        {% if is_logged_in %}
             <form method="POST" action="/submit-recipe">
-            <p>
-                <label for="recipe-title">Recipe Title</label>
-                <input type="text" id="recipe-title" name="recipe-title" placeholder="Enter the recipe title" size="35">
-            </p>
-            <p>
-                <label for="yield">Yield</label>
-                <input type="number" id="yield" name="yield" placeholder="Number of servings" min="1" size="35">
-            </p>
-            <p>
-                <label for="calories">Calories</label>
-                <input type="number" id="calories" name="calories" placeholder="Calories per serving" min="0" size="35">
-            </p>
-            <p>
-                <label for="description">Description</label>
-                <textarea id="description" name="description" cols="40" rows="5" placeholder="Enter a brief description"></textarea>
-            </p>
-            <h2>
-                Ingredients!
-            </h2>
-            <div id="ingredients-container">
                 <p>
-                    <label for="ingredient-1">Ingredient 1</label>
-                    <input type="text" id="ingredient-1" name= "ingredients[]" placeholder="Enter an ingredient" size="35">
+                    <label for="recipe-title">Recipe Title</label>
+                    <input type="text" id="recipe-title" name="recipe-title" placeholder="Enter the recipe title" size="35">
                 </p>
-            </div>
-            <button type="button" onclick="addIngredient()">Add More Ingredients</button>
-            <script>
-                let ingredientCount = 1;
-                function addIngredient() 
-                {
-                    //Increase ingredientCount to represent new ingredient being added
-                    ingredientCount++; 
-                    // This line access div created earlier 'ingredients-container'
-                    const container = document.getElementById("ingredients-container");
-                    // New input is created 
-                    const newIngredient = document.createElement("p");
-                    //This innerHTML function is basically utilizing the same code from the ingredients-container HTML except that there are variables instead of hard-coded things like 'Ingredient 1'
-                    // This ensures that each ingredient has a unique id and label, making it easier to access on the backend later
-                    newIngredient.innerHTML = `
-                        <label for="ingredient-${ingredientCount}">Ingredient ${ingredientCount}</label>
-                        <input type="text" id="ingredient-${ingredientCount}" name="ingredients[]" placeholder="Enter an ingredient" size="35">
-                    `;
-                    // This adds the newly created ingredient to the existing container(div from earlier)
-                    container.appendChild(newIngredient);
-                }
-            </script>
-            <h2>
-                Labels!
-            </h2>
-            <p>
-                <label for="existing-labels">Select Labels:</label>
-                <select id="existing-labels" name="labels[]" multiple>
-                    {% for label in labels %}
-                        <option value="{{ label.labelname }}">{{ label.labelname }}</option>
-                    {% endfor %}
-                </select>
-            </p>
+                <p>
+                    <label for="yield">Yield</label>
+                    <input type="number" id="yield" name="yield" placeholder="Number of servings" min="1" size="35">
+                </p>
+                <p>
+                    <label for="calories">Calories</label>
+                    <input type="number" id="calories" name="calories" placeholder="Calories per serving" min="0" size="35">
+                </p>
+                <p>
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" cols="40" rows="5" placeholder="Enter a brief description"></textarea>
+                </p>
+                <h2>
+                    Ingredients!
+                </h2>
+                <div id="ingredients-container">
+                    <p>
+                        <label for="ingredient-1">Ingredient 1</label>
+                        <input type="text" id="ingredient-1" name= "ingredients[]" placeholder="Enter an ingredient" size="35">
+                    </p>
+                </div>
+                <button type="button" onclick="addIngredient()">Add More Ingredients</button>
+                <script>
+                    let ingredientCount = 1;
+                    function addIngredient() 
+                    {
+                        //Increase ingredientCount to represent new ingredient being added
+                        ingredientCount++; 
+                        // This line access div created earlier 'ingredients-container'
+                        const container = document.getElementById("ingredients-container");
+                        // New input is created 
+                        const newIngredient = document.createElement("p");
+                        //This innerHTML function is basically utilizing the same code from the ingredients-container HTML except that there are variables instead of hard-coded things like 'Ingredient 1'
+                        // This ensures that each ingredient has a unique id and label, making it easier to access on the backend later
+                        newIngredient.innerHTML = `
+                            <label for="ingredient-${ingredientCount}">Ingredient ${ingredientCount}</label>
+                            <input type="text" id="ingredient-${ingredientCount}" name="ingredients[]" placeholder="Enter an ingredient" size="35">
+                        `;
+                        // This adds the newly created ingredient to the existing container(div from earlier)
+                        container.appendChild(newIngredient);
+                    }
+                </script>
+                <h2>
+                    Labels!
+                </h2>
+                <p>
+                    <label for="existing-labels">Select Labels:</label>
+                    <select id="existing-labels" name="labels[]" multiple>
+                        {% for label in labels %}
+                            <option value="{{ label.labelname }}">{{ label.labelname }}</option>
+                        {% endfor %}
+                    </select>
+                </p>
         
-            <p>
-                <label for="new-label">Add a New Label:</label>
-                <input type="text" id="new-label" name="new-label" placeholder="Enter a new label">
-            </p>
-            <h2>
-                Cuisine!
-            </h2>
-            <p>
-                <label for="existing-cuisines">Select Cuisines:</label>
-                <select id="existing-cuisines" name="cuisines[]" multiple>
-                    {% for cuisine in cuisines %}
-                        <option value="{{ cuisine.cuisinename }}">{{ cuisine.cuisinename }}</option>
-                    {% endfor %}
-                </select>
-            </p>
+                <p>
+                    <label for="new-label">Add a New Label:</label>
+                    <input type="text" id="new-label" name="new-label" placeholder="Enter a new label">
+                </p>
+                <h2>
+                    Cuisine!
+                </h2>
+                <p>
+                    <label for="existing-cuisines">Select Cuisines:</label>
+                    <select id="existing-cuisines" name="cuisines[]" multiple>
+                        {% for cuisine in cuisines %}
+                            <option value="{{ cuisine.cuisinename }}">{{ cuisine.cuisinename }}</option>
+                        {% endfor %}
+                    </select>
+                </p>
         
-            <p>
-                <label for="new-cuisine">Add a New Cuisine:</label>
-                <input type="text" id="new-cuisine" name="new-cuisine" placeholder="Enter a new cuisine">
-            </p>        
-              <button class="submitButton" type="submit"value="Submit">Submit</button>
-        </form>
-    </body>
-</html>
+                <p>
+                    <label for="new-cuisine">Add a New Cuisine:</label>
+                    <input type="text" id="new-cuisine" name="new-cuisine" placeholder="Enter a new cuisine">
+                </p>        
+                    <button class="submitButton" type="submit"value="Submit">Submit</button>
+            </form>
+        {% else %}
+            User must log in to create a recipe!
+        {% endif %}
+{% endblock %}
