@@ -66,7 +66,7 @@
                 {% for review in reviews %}
                     <li>
                         <strong>{{ review.title }}</strong><br>
-                        <em>By {{ review.username }} on {{ review.timestamp }}</em><br>
+                        <em>By {{ review.username }} on {{ review.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</em><br>
                         <p>{{ review.text }}</p>
                     </li>
                 {% endfor %}

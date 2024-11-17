@@ -4,7 +4,6 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import IntegrityError
 from flask import Flask, request, render_template, g, redirect, Response, abort
 from flask import url_for, session, flash
-from datetime import datetime
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
@@ -285,32 +284,39 @@ def insert_recipe():
 
 @app.route('/submit-review/<recipe_id>', methods=['POST'])
 def submit_review(recipe_id):
+	print("submit-review")
 	username = session.get('username')
 	if not username:
 		return redirect(url_for('login'))
 
 	title = request.form.get('title')
-	text = request.form.get('text')
-
+	content = request.form.get('text')
+	print(title, text)
 	if not title or not text:
+		print("No title or text")
 		flash('Please fill out both the title and the text of the review.')
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 	try:
 		# Insert review into the database
-		review_id = g.conn.execute('SELECT COALESCE(MAX(reviewId), 0) + 1 FROM Reviews').fetchone()[0]
-		g.conn.execute("""
-			INSERT INTO Reviews (reviewId, userName, recipeId, title, text, timestamp)
-			VALUES (%s, %s, %s, %s, %s, %s)
-		""", (review_id, username, recipe_id, title, text, datetime.now()))
+		review_id = g.conn.execute(text('SELECT COALESCE(MAX(reviewId), 0) + 1 FROM Reviews')).scalar()
 
+		g.conn.execute(text("""
+			INSERT INTO Reviews (reviewId, userName, recipeId, title, text)
+			VALUES (:reviewid, :username, :recipeid, :title, :text)"""), {
+				"reviewid": review_id,
+				"username": username,
+				"recipeid": recipe_id,
+				"title": title,
+				"text": content})
 		g.conn.commit()
 		flash('Your review has been submitted successfully!')
-		return redirect(url_for('recipe', recipe_id=recipe_id))  # Redirect to the recipe page
+		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 	except Exception as e:
 		flash(f'An error occurred while submitting your review: {str(e)}')
-		return redirect(url_for('recipe', recipe_id=recipe_id))  # Redirect back to the recipe page
+		print("An error occurred while submitting your review:", e)
+		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 
 @app.route('/submit-recipe', methods=['POST'])
@@ -465,7 +471,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8450, type=int)
+	@click.argument('PORT', default=8452, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
