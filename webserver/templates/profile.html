@@ -41,6 +41,21 @@
             {% endfor %}
         </ul>
 
+        <h2>Recipes Liked:</h2>
+        <ul>
+            {% for recipe in liked_recipes %}
+                <li>
+                    <strong>{{ recipe.title }}</strong> 
+                    (Recipe ID: {{ recipe[0] }})
+                    <br>Yield: {{ recipe.yield }}
+                    <br>Calories: {{ recipe.calories }}
+                    <br>{{ recipe.text }}
+                </li>
+            {% else %}
+                <li>No recipes liked.</li>
+            {% endfor %}
+        </ul>
+
     {% else %}
         <p>User not found!</p>
     {% endif %}
