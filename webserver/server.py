@@ -106,7 +106,6 @@ def profile(username = None):
 			WHERE r.userName = :name
 		""")
 		reviews = g.conn.execute(query_reviews, {"name": username}).fetchall()
-		print(reviews)
 
 		query_recipes = text("""
 			SELECT re.recipeId, re.title, re.yield, re.text, re.calories 
@@ -116,9 +115,8 @@ def profile(username = None):
 		""")
 		recipes = g.conn.execute(query_recipes, {"name": username}).fetchall()
 
-		# TODO: only fetch recipeId and title, and makes it href to /recipe/<recipe_id> in profile.html
 		query_liked_recipes = text("""
-			SELECT r.recipeId, r.title, r.yield, r.text, r.calories
+			SELECT r.recipeId, r.title
 			FROM Recipes r
 			JOIN Likes l ON r.recipeId = l.recipeId
 			WHERE l.userName = :username;
@@ -126,6 +124,10 @@ def profile(username = None):
 		liked_recipes = g.conn.execute(query_recipes, {"name": username}).fetchall()
 
 		return render_template('profile.html', user=user, reviews=reviews, recipes=recipes, liked_recipes=liked_recipes)
+
+@app.route('/recipe/<recipe_id>')
+def recipe(recipe_id):
+	pass
 
 if __name__ == "__main__":
 	import click
