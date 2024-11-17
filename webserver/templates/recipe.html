@@ -33,8 +33,21 @@
     </ul>
     <p><strong>Description and Insturctions:</strong></p>
     <p>{{ recipe.text }}</p>
-    <button id="like-button" onclick="likeRecipe()">Like</button>
+
+    {% if is_logged_in %}
+        <button id="like-button" onclick="likeRecipe()">
+            {% if has_liked %}
+                Unlike
+            {% else %}
+                Like
+            {% endif %}
+        </button>
+    {% endif %}
+
     <p>Likes: <span id="like-count">{{ like_count }}</span></p>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
 
     <script>
         function likeRecipe() {
@@ -45,6 +58,9 @@
             .then(data => {
                 // Update the like count on the page
                 document.getElementById('like-count').textContent = data;
+                // Toggle like and unlike
+                let button = document.getElementById('like-button');
+                button.textContent = button.textContent === 'Like' ? 'Unlike' : 'Like';
             })
             .catch(error => console.error('Error:', error));
         }

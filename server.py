@@ -158,6 +158,7 @@ def submit_recipe():
         return redirect('/recipes')  
     except Exception as e:
         return f"Error: {e}"
+
 @app.route('/insert-recipe')
 def insert_recipe():
     conn1= db.connect()
@@ -172,29 +173,6 @@ def insert_recipe():
     conn1.close()
     return render_template('insertrecipe.html', labels=labels, cuisines=cuisines)
         
-@app.route('/like/<recipe_id>', methods=['POST'])
-def like_recipe(recipe_id):
-    try:
-        username = 'user1'
-        if not username:
-            print("Go to login page") # will change to redirection 
-        else:
-            conn= db.connect()
-            existing_like = conn.execute(
-                text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
-                {'username': username, 'recipeid': recipe_id}
-            ).fetchone()
-            if not existing_like:
-                conn.execute(insert(likes).values(username=username, recipeid=recipe_id))
-                conn.commit()
-            like_count = conn.execute(
-                text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
-                {'recipeid': recipe_id}
-            ).scalar()
-            conn.close()
-            return str(like_count)  
-    except Exception as e:
-        return f"Error: {e}"
 # edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
 # delete recipe but if you the owner (add delete button on frontend)
 # write a review + display existing reviews

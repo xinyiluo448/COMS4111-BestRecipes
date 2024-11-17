@@ -13,6 +13,63 @@ DATABASEURI = "postgresql://ts3585:751429@104.196.222.236/proj1part2"
 engine = create_engine(DATABASEURI)
 conn = engine.connect()
 
+metadata=MetaData()
+users = Table('users', metadata,
+    Column('username', String(20), primary_key=True, nullable=False),
+    Column('password', String(20), nullable=False)
+)
+recipes = Table('recipes', metadata,
+    Column('recipeid', String(40), primary_key=True, nullable=False),
+    Column('title', String(100), nullable=False, unique=True),
+    Column('yield', Float, nullable=False, default=1.0),
+    Column('text', String, nullable=False),
+    Column('calories', Integer, nullable=True),
+    CheckConstraint('yield> 0', name='yield_check'),
+    CheckConstraint('calories >= 0', name='calories_check')
+)
+ingredients = Table('ingredients', metadata,
+    Column('foodid', String(35), primary_key=True, nullable=False),
+    Column('food', String(100), nullable=False)
+)
+cuisines= Table('cuisines',metadata,
+    Column('cuisinename',String(20),primary_key=True,nullable=False),
+    Column('text',String,nullable=True)
+)
+labels= Table('labels',metadata,
+    Column('labelname',String(20),primary_key=True,nullable=False),
+    Column('text',String,nullable=True)
+)
+reviews= Table('reviews',metadata,
+    Column('reviewid',Integer,primary_key=True,nullable=False),
+    Column('username',String(20),ForeignKey('users.username'),nullable=False),
+    Column('recipeid', String(40),ForeignKey('recipes.recipeid'),nullable=False),
+    Column('title',String(50)),
+    Column('text',Text),
+    Column('timestamp',TIMESTAMP,nullable=False,default="CURRENT_TIMESTAMP"),
+    CheckConstraint('timestamp<= CURRENT_TIMESTAMP',name='timestamp_check')
+)
+
+owns= Table('owns', metadata,
+    Column('username', String(20), ForeignKey('users.username'), primary_key=True, nullable=False),
+    Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False)
+)
+likes= Table('likes', metadata,
+    Column('username', String(20), ForeignKey('users.username'), primary_key=True, nullable=False),
+    Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False)
+)
+contains_ingredients = Table('contains_ingredients', metadata,
+    Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False),
+    Column('foodid', String(35), ForeignKey('ingredients.foodid'), primary_key=True, nullable=False)
+)
+contains_labels = Table('contains_labels', metadata,
+    Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False),
+    Column('labelname', String(20), ForeignKey('labels.labelname'), primary_key=True, nullable=False)
+)
+contains_cuisines = Table('contains_cuisines', metadata,
+    Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False),
+    Column('cuisinename', String(20), ForeignKey('cuisines.cuisinename'), primary_key=True, nullable=False)
+)
+
 @app.before_request
 def before_request():
 	try:
@@ -127,6 +184,7 @@ def profile(username = None):
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):
+	username = session.get('username', None)
 	recipe = g.conn.execute(
 		text('SELECT * FROM recipes WHERE recipeid = :recipeid'),
 		{'recipeid': recipe_id}
@@ -138,12 +196,56 @@ def recipe(recipe_id):
 	ingredients = g.conn.execute(text('SELECT food FROM ingredients WHERE foodid IN (SELECT foodid FROM contains_ingredients WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	labels = g.conn.execute(text('SELECT labelname FROM labels WHERE labelname IN (SELECT labelname FROM contains_labels WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	cuisine = g.conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchone()
+	if not username:  
+		return render_template('recipe.html',
+							recipe=recipe,
+							labels=labels,
+							ingredients=ingredients,
+							cuisine=cuisine,
+							like_count=like_count,
+							is_logged_in=False, 
+							has_liked=False)
+	
+	existing_like = g.conn.execute(
+		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
+		{'username': username, 'recipeid': recipe_id}
+	).fetchone()
+
+	has_liked = True if existing_like else False
 	return render_template('recipe.html',
 							recipe=recipe,
 							labels=labels,
 							ingredients=ingredients,
 							cuisine=cuisine,
-							like_count=like_count)
+							like_count=like_count,
+							is_logged_in=True, 
+							has_liked=has_liked)
+
+@app.route('/like/<recipe_id>', methods=['POST'])
+def like_recipe(recipe_id):
+	username = session.get('username', None)
+	existing_like = g.conn.execute(
+		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
+		{'username': username, 'recipeid': recipe_id}
+	).fetchone()
+	if not existing_like:
+		try:
+			g.conn.execute(insert(likes).values(username=username, recipeid=recipe_id))
+			g.conn.commit()
+		except Exception as e:
+			return f"Failed to like the recipe: {e}", 400
+	else:
+		try:
+			g.conn.execute(delete(likes).where(likes.c.username == username).where(likes.c.recipeid == recipe_id))
+			g.conn.commit()
+		except Exception as e:
+			return f"Failed to unlike the recipe: {e}", 400
+
+	like_count = g.conn.execute(
+		text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
+		{'recipeid': recipe_id}
+	).scalar()
+	return str(like_count)  
 
 if __name__ == "__main__":
 	import click
@@ -152,7 +254,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8994, type=int)
+	@click.argument('PORT', default=8996, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
