@@ -87,28 +87,6 @@ def teardown_request(exception):
 		print("Exception: {e}")
 		pass
 
-@app.route('/')
-def index():
-	# print(request.args, request.form, request.method)
-
-	# 2 ways to get results
-
-	# Method 1 - Indexing result by column number
-	names = []
-	# for result in cursor:
-	#   names.append(result[0])  
-
-	# Method 2 - Indexing result by column name
-	# names = []
-	# results = cursor.mappings().all()
-	# for result in results:
-	#   names.append(result["name"])
-
-	# cursor.close()
-
-	context = dict(data = names)
-	return render_template("index.html", **context)
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 	if request.method == 'POST':
@@ -245,7 +223,16 @@ def like_recipe(recipe_id):
 		text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
 		{'recipeid': recipe_id}
 	).scalar()
-	return str(like_count)  
+	return str(like_count)
+
+@app.route('/')
+@app.route('/recipes')
+def show_recipes():
+    cursor= g.conn.execute(text("SELECT * FROM recipes"))
+    recipes= []
+    for row in cursor:
+        recipes.append(row)
+    return render_template('recipes.html', recipes=recipes)
 
 if __name__ == "__main__":
 	import click

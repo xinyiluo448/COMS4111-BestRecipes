@@ -69,15 +69,6 @@ contains_cuisines = Table('contains_cuisines', metadata,
     Column('cuisinename', String(20), ForeignKey('cuisines.cuisinename'), primary_key=True, nullable=False)
 )
 
-@app.route('/recipes')
-def show_recipes():
-    conn1= db.connect()
-    cursor= conn1.execute(text("SELECT * FROM recipes"))
-    recipes= []
-    for row in cursor:
-        recipes.append(row)
-    conn1.close()
-    return render_template('recipes.html', recipes=recipes)
 @app.route('/submit-recipe', methods=['POST'])
 # Fix: should NOT go ahead with insertion of recipe if there is an issue with ingredient, cuisine, or label insertion
 # Fix: to include text from label + cuisine user insertion 
