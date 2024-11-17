@@ -40,9 +40,41 @@
     {% endif %}
 
     <p>Likes: <span id="like-count">{{ like_count }}</span></p>
+
+    {% if is_logged_in %}
+        <h3>Submit a Review</h3>
+        <form action="{{ url_for('submit_review', recipe_id=recipe.recipeid) }}" method="POST">
+            <label for="review-title">Review Title:</label>
+            <input type="text" id="review-title" name="title" required><br><br>
+
+            <label for="review-text">Review Text:</label>
+            <textarea id="review-text" name="text" rows="4" cols="50" required></textarea><br><br>
+
+            <button type="submit">Submit Review</button>
+        </form>
+    {% else %}
+        <p>You must be logged in to submit a review.</p>
+    {% endif %}
+
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
+
+    <h3>Reviews:</h3>
+        {% if reviews %}
+            <ul>
+                {% for review in reviews %}
+                    <li>
+                        <strong>{{ review.title }}</strong><br>
+                        <em>By {{ review.username }} on {{ review.timestamp }}</em><br>
+                        <p>{{ review.text }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No reviews yet for this recipe.</p>
+        {% endif %}
+
 
     <script>
         function likeRecipe() {
@@ -51,6 +83,7 @@
             })
             .then(response => response.text())
             .then(data => {
+                console.log(data)
                 // Update the like count on the page
                 document.getElementById('like-count').textContent = data;
                 // Toggle like and unlike

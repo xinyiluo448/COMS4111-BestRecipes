@@ -3,7 +3,8 @@ from sqlalchemy import *
 from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import IntegrityError
 from flask import Flask, request, render_template, g, redirect, Response, abort
-from flask import url_for, session
+from flask import url_for, session, flash
+from datetime import datetime
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
@@ -72,8 +73,10 @@ contains_cuisines = Table('contains_cuisines', metadata,
 
 @app.before_request
 def before_request():
+	print("before request")
 	try:
 		g.conn = engine.connect()
+		print("connected to db!")
 	except:
 		print("uh oh, problem connecting to database")
 		import traceback; traceback.print_exc()
@@ -81,6 +84,10 @@ def before_request():
 
 @app.teardown_request
 def teardown_request(exception):
+	if exception:
+		print(f"An error occurred: {exception}")
+	else:
+		print("Request processed successfully.")
 	try:
 		g.conn.close()
 	except Exception as e:
@@ -164,7 +171,8 @@ def profile(username = None):
 								reviews=reviews, 
 								recipes=recipes, 
 								liked_recipes=liked_recipes,
-								is_logged_in=is_logged_in)
+								is_logged_in=is_logged_in,
+								username=username)
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):
@@ -180,12 +188,21 @@ def recipe(recipe_id):
 	ingredients = g.conn.execute(text('SELECT food FROM ingredients WHERE foodid IN (SELECT foodid FROM contains_ingredients WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	labels = g.conn.execute(text('SELECT labelname FROM labels WHERE labelname IN (SELECT labelname FROM contains_labels WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	cuisine = g.conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchone()
+	
+	query_reviews = text("""
+			SELECT userName, title, text, timestamp 
+			FROM Reviews r 
+			WHERE r.recipeId = :recipeId
+		""")
+	reviews = g.conn.execute(query_reviews, {"recipeId": recipe_id}).fetchall()
+
 	if not username:  
 		return render_template('recipe.html',
 							recipe=recipe,
 							labels=labels,
 							ingredients=ingredients,
 							cuisine=cuisine,
+							reviews=reviews,
 							like_count=like_count,
 							is_logged_in=False, 
 							has_liked=False)
@@ -201,12 +218,15 @@ def recipe(recipe_id):
 							labels=labels,
 							ingredients=ingredients,
 							cuisine=cuisine,
+							reviews=reviews,
 							like_count=like_count,
 							is_logged_in=True, 
-							has_liked=has_liked)
+							has_liked=has_liked,
+							username=username)
 
 @app.route('/like/<recipe_id>', methods=['POST'])
 def like_recipe(recipe_id):
+	print("like/unlike recipe")
 	username = session.get('username', None)
 	existing_like = g.conn.execute(
 		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
@@ -231,20 +251,23 @@ def like_recipe(recipe_id):
 	).scalar()
 	return str(like_count)
 
-@app.route('/')
 @app.route('/recipes')
 def show_recipes():
 	print("show recipes")
+	username = session.get('username', None)
 	is_logged_in = True if 'username' in session else False
 	cursor= g.conn.execute(text("SELECT * FROM recipes"))
 	recipes= []
 	for row in cursor:
 		recipes.append(row)
-	return render_template('recipes.html', recipes=recipes, is_logged_in=is_logged_in)
+	return render_template('recipes.html', 
+							recipes=recipes, 
+							is_logged_in=is_logged_in, 
+							username=username)
 
 @app.route('/insert-recipe')
 def insert_recipe():
-	is_logged_in = True if 'username' in session else False
+	username = session.get('username', None)
 	label_result = g.conn.execute(text('SELECT labelname FROM labels'))
 	labels=[]
 	for row in label_result:
@@ -257,7 +280,38 @@ def insert_recipe():
 	return render_template('insertrecipe.html', 
 							labels=labels, 
 							cuisines=cuisines, 
-							is_logged_in=is_logged_in)
+							is_logged_in=not username is None,
+							username=username)
+
+@app.route('/submit-review/<recipe_id>', methods=['POST'])
+def submit_review(recipe_id):
+	username = session.get('username')
+	if not username:
+		return redirect(url_for('login'))
+
+	title = request.form.get('title')
+	text = request.form.get('text')
+
+	if not title or not text:
+		flash('Please fill out both the title and the text of the review.')
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+
+	try:
+		# Insert review into the database
+		review_id = g.conn.execute('SELECT COALESCE(MAX(reviewId), 0) + 1 FROM Reviews').fetchone()[0]
+		g.conn.execute("""
+			INSERT INTO Reviews (reviewId, userName, recipeId, title, text, timestamp)
+			VALUES (%s, %s, %s, %s, %s, %s)
+		""", (review_id, username, recipe_id, title, text, datetime.now()))
+
+		g.conn.commit()
+		flash('Your review has been submitted successfully!')
+		return redirect(url_for('recipe', recipe_id=recipe_id))  # Redirect to the recipe page
+
+	except Exception as e:
+		flash(f'An error occurred while submitting your review: {str(e)}')
+		return redirect(url_for('recipe', recipe_id=recipe_id))  # Redirect back to the recipe page
+
 
 @app.route('/submit-recipe', methods=['POST'])
 # Fix: should NOT go ahead with insertion of recipe if there is an issue with ingredient, cuisine, or label insertion
@@ -265,10 +319,10 @@ def insert_recipe():
 # Fix: add user as parameter, redirect to user page after they press submit
 def submit_recipe():
 	try:
-		title=request.form['recipe-title']
-		yield_value=request.form['yield']
-		calories=request.form['calories']
-		description=request.form['description']
+		title = request.form['recipe-title']
+		yield_value = request.form['yield']
+		calories = request.form['calories']
+		description = request.form['description']
 		recipe_id = str(uuid.uuid4())
 		recipe_insert = insert(recipes).values(
 			recipeid=recipe_id,
@@ -285,10 +339,10 @@ def submit_recipe():
 			return uuid_str[:length]
 		for ingredient in ingredients_list:
 			ingredient_id = generate_custom_uuid()
-			existing_ingredient=select(ingredients.c.food).where(ingredients.c.food == ingredient)
+			existing_ingredient = select(ingredients.c.food).where(ingredients.c.food == ingredient)
 			cursor = g.conn.execute(existing_ingredient).fetchone()
 			if not cursor:
-				new_ingredient=insert(ingredients).values(
+				new_ingredient = insert(ingredients).values(
 					food=ingredient,
 					foodid=ingredient_id
 				)
@@ -305,32 +359,32 @@ def submit_recipe():
 			)
 			g.conn.execute(new_insert)
 			g.conn.commit() 
-		labels_list=request.form.getlist('labels[]')
-		new_label=request.form['new-label']
+		labels_list = request.form.getlist('labels[]')
+		new_label = request.form['new-label']
 		if new_label:
 			labels_list.append(new_label)
 		for label in labels_list:
-			existing_label= select(labels.c.labelname).where(labels.c.labelname == label)
+			existing_label = select(labels.c.labelname).where(labels.c.labelname == label)
 			cursor= g.conn.execute(existing_label).fetchone()
 			if not cursor:
-				new_label_insert= insert(labels).values(labelname=label, text=None)
+				new_label_insert = insert(labels).values(labelname=label, text=None)
 				g.conn.execute(new_label_insert)
 				g.conn.commit()
 			label_insert = insert(contains_labels).values(recipeid=recipe_id, labelname=label)
 			g.conn.execute(label_insert)
 			g.conn.commit()
-		cuisines_list=request.form.getlist('cuisines[]')
-		new_cuisine=request.form['new-cuisine']
+		cuisines_list = request.form.getlist('cuisines[]')
+		new_cuisine = request.form['new-cuisine']
 		if new_cuisine:
 			cuisines_list.append(new_cuisine)
 		for cuisine in cuisines_list:
-			existing_cuisine= select(cuisines.c.cuisinename).where(cuisines.c.cuisinename == cuisine)
-			cursor= g.conn.execute(existing_cuisine).fetchone()
+			existing_cuisine = select(cuisines.c.cuisinename).where(cuisines.c.cuisinename == cuisine)
+			cursor = g.conn.execute(existing_cuisine).fetchone()
 			if not cursor:
-				fresh_insert= insert(cuisines).values(cuisinename=cuisine)
+				fresh_insert = insert(cuisines).values(cuisinename=cuisine)
 				g.conn.execute(fresh_insert)
 				g.conn.commit()
-			cuisines_insert= insert(contains_cuisines).values(recipeid=recipe_id, cuisinename=cuisine)
+			cuisines_insert = insert(contains_cuisines).values(recipeid=recipe_id, cuisinename=cuisine)
 			g.conn.execute(cuisines_insert)
 			g.conn.commit()
 
@@ -342,9 +396,10 @@ def submit_recipe():
 # delete recipe but if you the owner (add delete button on frontend)
 # write a review + display existing reviews
 # search functionality:
+@app.route('/')
 @app.route('/search')
 def search_page():
-	is_logged_in = 'username' in session
+	username = session.get('username', None)
 	statement = select(cuisines.c.cuisinename)
 	statement2 = select(labels.c.labelname)
 	cursor = g.conn.execute(statement)
@@ -354,20 +409,21 @@ def search_page():
 	return render_template('recipesearch.html',
 							cuisines=cuisines_list,
 							labels=labels_list,
-							is_logged_in=is_logged_in)
+							is_logged_in=not username is None,
+							username=username)
 
 @app.route('/search-recipe', methods=['GET'])
 def search_recipe():
-	is_logged_in = 'username' in session
+	username = session.get('username', None)
 
-	search_term= request.args.get('searchTerm', '').strip()
-	selected_cuisines= request.args.getlist('cuisines')
-	selected_labels= request.args.getlist('labels')
+	search_term = request.args.get('searchTerm', '').strip()
+	selected_cuisines = request.args.getlist('cuisines')
+	selected_labels = request.args.getlist('labels')
 	selected_ingredients = request.args.getlist('ingredients')
 	min_likes = request.args.get('min_likes', type=int)
-	cuisines_found= []
-	recipes_found= []
-	labels_found=[]
+	cuisines_found = []
+	recipes_found = []
+	labels_found = []
 	ingredients_found = []
 	statement= select(recipes.c.recipeid, recipes.c.title, recipes.c['yield'], recipes.c.calories, recipes.c.text)\
 		.where(recipes.c.title.ilike(f"%{search_term}%"))
@@ -399,7 +455,8 @@ def search_recipe():
 							cuisines=cuisines_found,
 							labels=labels_found,
 							ingredients=ingredients_found,
-							is_logged_in=is_logged_in)
+							is_logged_in=not username is None,
+							username = username)
 
 if __name__ == "__main__":
 	import click
@@ -408,7 +465,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8889, type=int)
+	@click.argument('PORT', default=8450, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
