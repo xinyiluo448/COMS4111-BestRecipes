@@ -37,9 +37,20 @@
                 Like
             {% endif %}
         </button>
+        {% if owned_by_user == username %}
+            <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
+                <button type="submit">Unclaim</button>
+            </form>
+        {% elif owned_by_user is none %}
+            <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
+                <button type="submit">Claim</button>
+            </form>
+        {% endif %}
+
     {% endif %}
 
     <p>Likes: <span id="like-count">{{ like_count }}</span></p>
+    <p>Owner: <span id="owned_by">{{ owned_by_user }}</span></p>
 
     {% if is_logged_in %}
         <h3>Submit a Review</h3>
@@ -83,7 +94,6 @@
             })
             .then(response => response.text())
             .then(data => {
-                console.log(data)
                 // Update the like count on the page
                 document.getElementById('like-count').textContent = data;
                 // Toggle like and unlike

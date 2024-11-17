@@ -72,10 +72,8 @@ contains_cuisines = Table('contains_cuisines', metadata,
 
 @app.before_request
 def before_request():
-	print("before request")
 	try:
 		g.conn = engine.connect()
-		print("connected to db!")
 	except:
 		print("uh oh, problem connecting to database")
 		import traceback; traceback.print_exc()
@@ -147,7 +145,12 @@ def profile(username = None):
 			FROM Reviews r 
 			WHERE r.userName = :name
 		""")
-		reviews = g.conn.execute(query_reviews, {"name": username}).fetchall()
+
+		reviews = []
+		cursor = g.conn.execute(query_reviews, {"name": username})
+		for review in cursor:
+			reviews.append(review)
+		cursor.close()
 
 		query_recipes = text("""
 			SELECT re.recipeId, re.title, re.yield, re.text, re.calories 
@@ -155,7 +158,11 @@ def profile(username = None):
 			JOIN Owns o ON o.recipeId = re.recipeId
 			WHERE o.userName = :name
 		""")
-		recipes = g.conn.execute(query_recipes, {"name": username}).fetchall()
+		recipes = []
+		cursor = g.conn.execute(query_recipes, {"name": username})
+		for recipe in cursor:
+			recipes.append(recipe)
+		cursor.close()
 
 		query_liked_recipes = text("""
 			SELECT r.recipeId, r.title
@@ -163,7 +170,11 @@ def profile(username = None):
 			JOIN Likes l ON r.recipeId = l.recipeId
 			WHERE l.userName = :username;
 		""")
-		liked_recipes = g.conn.execute(query_recipes, {"name": username}).fetchall()
+		liked_recipes = []
+		cursor = g.conn.execute(query_recipes, {"name": username})
+		for recipe in cursor:
+			liked_recipes.append(recipe)
+		cursor.close()
 
 		return render_template('profile.html', 
 								user=user, 
@@ -193,7 +204,16 @@ def recipe(recipe_id):
 			FROM Reviews r 
 			WHERE r.recipeId = :recipeId
 		""")
-	reviews = g.conn.execute(query_reviews, {"recipeId": recipe_id}).fetchall()
+	reviews = []
+	cursor = g.conn.execute(query_reviews, {"recipeId": recipe_id})
+	for review in cursor:
+		reviews.append(review)
+	cursor.close()
+
+	owned_by_user = g.conn.execute(
+		text("SELECT username FROM owns WHERE recipeid = :recipeid"),
+		{"recipeid": recipe_id}
+	).fetchone()
 
 	if not username:  
 		return render_template('recipe.html',
@@ -204,7 +224,8 @@ def recipe(recipe_id):
 							reviews=reviews,
 							like_count=like_count,
 							is_logged_in=False, 
-							has_liked=False)
+							has_liked=False,
+							owned_by_user=owned_by_user[0] if owned_by_user else None)
 	
 	existing_like = g.conn.execute(
 		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
@@ -212,6 +233,7 @@ def recipe(recipe_id):
 	).fetchone()
 
 	has_liked = True if existing_like else False
+
 	return render_template('recipe.html',
 							recipe=recipe,
 							labels=labels,
@@ -221,11 +243,11 @@ def recipe(recipe_id):
 							like_count=like_count,
 							is_logged_in=True, 
 							has_liked=has_liked,
-							username=username)
+							username=username,
+							owned_by_user=owned_by_user[0] if owned_by_user else None)
 
 @app.route('/like/<recipe_id>', methods=['POST'])
 def like_recipe(recipe_id):
-	print("like/unlike recipe")
 	username = session.get('username', None)
 	existing_like = g.conn.execute(
 		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
@@ -250,6 +272,43 @@ def like_recipe(recipe_id):
 	).scalar()
 	return str(like_count)
 
+@app.route('/claim/<recipe_id>', methods=['POST'])
+def claim_recipe(recipe_id):
+	username = session.get('username', None)
+	if not username:
+		flash("You must be logged in to claim a recipe", "error")
+		return redirect(url_for('login'))
+
+	owned_by_user = g.conn.execute(
+		text("SELECT username FROM owns WHERE recipeid = :recipeid"),
+		{"recipeid": recipe_id}
+	).fetchone()
+
+	owned_by_user = owned_by_user[0] if owned_by_user else None
+	if owned_by_user and owned_by_user != username:
+		flash("You are not the owner of the recipe.", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+
+	try:
+		if owned_by_user:
+			g.conn.execute(
+				text("DELETE FROM owns WHERE username = :username AND recipeid = :recipeid"),
+				{"username": username, "recipeid": recipe_id}
+			)
+			g.conn.commit()
+			flash("Recipe ownership deleted.", "success")
+		else:
+			g.conn.execute(
+				text("INSERT INTO owns (username, recipeid) VALUES (:username, :recipeid)"),
+				{"username": username, "recipeid": recipe_id}
+			)
+			g.conn.commit()
+			flash("Recipe claimed successfully.", "success")
+	except Error as e:
+		print(f"Error executing claim/unclaim operation: {e}") 
+		flash("An error occurred while processing your request. Please try again.", "error")
+	return redirect(url_for('recipe', recipe_id=recipe_id))
+
 @app.route('/recipes')
 def show_recipes():
 	print("show recipes")
@@ -264,6 +323,7 @@ def show_recipes():
 							is_logged_in=is_logged_in, 
 							username=username)
 
+# TODO: insert recipe to owns table as well for the logged in user.
 @app.route('/insert-recipe')
 def insert_recipe():
 	username = session.get('username', None)
@@ -402,6 +462,7 @@ def submit_recipe():
 # delete recipe but if you the owner (add delete button on frontend)
 # write a review + display existing reviews
 # search functionality:
+# TODO: need a button to show all recipes
 @app.route('/')
 @app.route('/search')
 def search_page():
@@ -471,10 +532,10 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8452, type=int)
+	@click.argument('PORT', default=8457, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
-		app.run(host=HOST, port=PORT, debug=debug, threaded=threaded)
+		app.run(host=HOST, port=PORT, debug=True, threaded=True)
 
 	run()
