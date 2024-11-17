@@ -60,7 +60,6 @@ def register():
 			g.conn.execute(text('INSERT INTO Users (username) VALUES (:name)'), {"name":username})
 			g.conn.commit()
 			session['username'] = username
-			print("done")
 			return redirect('/')
 		except IntegrityError as e:
 			print("Integrity error: ", e)
@@ -86,17 +85,38 @@ def login():
 
 	return render_template("login.html")
 
+@app.route('/profile')
 @app.route('/profile/<username>')
-def profile(username):
-	# Check if the user is logged in by checking the session
-	username = session.get('username', None)
-	
+def profile(username = None):
 	if username is None:
-		return redirect(url_for('login'))
+		username = session.get('username', None)
+		if username:
+			return profile(username)
+		else:
+			print("User not logged in, directing to login page")
+			return redirect(url_for('login'))
 	else:
-		user = g.conn.execute('SELECT * FROM Users WHERE username = (:name)', {"name":username}).fetchone()
-		return render_template('profile.html', user=user)
+		user = g.conn.execute(text('SELECT * FROM Users WHERE username = (:name)'), {"name":username}).fetchone()
+		if not user:
+			return render_template('profile.html', user=None)
 
+		query_reviews = text("""
+			SELECT r.reviewId, r.recipeId, r.title, r.text, r.timestamp 
+			FROM Reviews r 
+			WHERE r.userName = :name
+		""")
+		reviews = g.conn.execute(query_reviews, {"name": username}).fetchall()
+		print(reviews)
+
+		query_recipes = text("""
+			SELECT re.recipeId, re.title, re.yield, re.text, re.calories 
+			FROM Recipes re
+			JOIN Owns o ON o.recipeId = re.recipeId
+			WHERE o.userName = :name
+		""")
+		recipes = g.conn.execute(query_recipes, {"name": username}).fetchall()
+
+		return render_template('profile.html', user=user, reviews=reviews, recipes=recipes)
 
 if __name__ == "__main__":
 	import click
@@ -105,7 +125,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8000, type=int)
+	@click.argument('PORT', default=8995, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))

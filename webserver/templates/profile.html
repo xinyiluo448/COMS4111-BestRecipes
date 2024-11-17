@@ -11,7 +11,36 @@
 
     {% if user %}
         <p><strong>Username:</strong> {{ user['username'] }}</p>
-        <!-- You can display other user details here -->
+
+        <h2>Recipes Created:</h2>
+        <ul>
+            {% for recipe in recipes %}
+                <li>
+                    <strong>{{ recipe.title }}</strong> 
+                    (Recipe ID: {{ recipe[0] }})
+                    <br>Yield: {{ recipe.yield }}
+                    <br>Calories: {{ recipe.calories }}
+                    <br>{{ recipe.text }}
+                </li>
+            {% else %}
+                <li>No recipes created.</li>
+            {% endfor %}
+        </ul>
+
+        <h2>Reviews Written:</h2>
+        <ul>
+            {% for review in reviews %}
+                <li>
+                    <strong>{{ review.title }}</strong> (Review ID: {{ review[0] }})
+                    <br><em style="font-size: 0.8em;">Recipe ID: {{ review[1] }}</em>
+                    <br>{{ review.text }}
+                    <br><small>Posted on: {{ review.timestamp }}</small>
+                </li>
+            {% else %}
+                <li>No reviews found.</li>
+            {% endfor %}
+        </ul>
+
     {% else %}
         <p>User not found!</p>
     {% endif %}
