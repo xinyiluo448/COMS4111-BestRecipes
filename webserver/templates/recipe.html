@@ -13,7 +13,15 @@
             No labels available.
         {% endif %}
     </p>
-    <p><strong>Cuisine:</strong> {{ cuisine.cuisinename }}</p>
+    <p><strong>Cuisine:</strong> 
+        {% if cuisines %}
+            {% for cuisine in cuisines %}
+            {{ cuisine.cuisinename }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        {% else %}
+            No cuisines available.
+        {% endif %}
+    </p>
     <p><strong>Yield:</strong> {{ recipe.yield }}</p>
     <p><strong>Calories:</strong> {{ recipe.calories }}</p>
     <p><strong>Ingredients:</strong></p>

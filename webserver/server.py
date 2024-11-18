@@ -205,7 +205,7 @@ def recipe(recipe_id):
 	).scalar()
 	ingredients = g.conn.execute(text('SELECT food FROM ingredients WHERE foodid IN (SELECT foodid FROM contains_ingredients WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	labels = g.conn.execute(text('SELECT labelname FROM labels WHERE labelname IN (SELECT labelname FROM contains_labels WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
-	cuisine = g.conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchone()
+	cuisines = g.conn.execute(text('SELECT cuisinename FROM cuisines WHERE cuisinename IN (SELECT cuisinename FROM contains_cuisines WHERE recipeid = :id)'), {'id': recipe_id}).fetchall()
 	
 	query_reviews = text("""
 			SELECT userName, title, text, timestamp 
@@ -228,7 +228,7 @@ def recipe(recipe_id):
 							recipe=recipe,
 							labels=labels,
 							ingredients=ingredients,
-							cuisine=cuisine,
+							cuisines=cuisines,
 							reviews=reviews,
 							like_count=like_count,
 							is_logged_in=False, 
@@ -533,8 +533,7 @@ def search_recipe():
 	selected_cuisines = request.args.getlist('cuisines')
 	selected_labels = request.args.getlist('labels')
 	selected_ingredients = request.args.getlist('ingredients[]')
-	if not selected_ingredients[0]:
-		selected_ingredients = []
+	selected_ingredients = [item for item in selected_ingredients if item]
 	min_likes = request.args.get('min_likes', type=int)
 
 	# Run SQL query to filter recipes
