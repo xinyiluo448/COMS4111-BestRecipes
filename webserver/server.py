@@ -4,6 +4,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import IntegrityError
 from flask import Flask, request, render_template, g, redirect, Response, abort
 from flask import url_for, session, flash
+import uuid
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
@@ -359,7 +360,6 @@ def show_recipes():
 							is_logged_in=is_logged_in, 
 							username=username)
 
-# TODO: insert recipe to owns table as well for the logged in user.
 @app.route('/insert-recipe')
 def insert_recipe():
 	username = session.get('username', None)
@@ -417,14 +417,14 @@ def submit_review(recipe_id):
 @app.route('/submit-recipe', methods=['POST'])
 # Fix: should NOT go ahead with insertion of recipe if there is an issue with ingredient, cuisine, or label insertion
 # Fix: to include text from label + cuisine user insertion 
-# Fix: add user as parameter, redirect to user page after they press submit
 def submit_recipe():
+	username = session.get('username', None)	
 	try:
 		title = request.form['recipe-title']
 		yield_value = request.form['yield']
 		calories = request.form['calories']
 		description = request.form['description']
-		recipe_id = str(uuid.uuid4())
+		recipe_id = "recipe_" + str(uuid.uuid4()).replace('-', '')
 		recipe_insert = insert(recipes).values(
 			recipeid=recipe_id,
 			title=title,
@@ -488,9 +488,19 @@ def submit_recipe():
 			cuisines_insert = insert(contains_cuisines).values(recipeid=recipe_id, cuisinename=cuisine)
 			g.conn.execute(cuisines_insert)
 			g.conn.commit()
+		
+		g.conn.execute(
+			text("INSERT INTO owns (username, recipeid) VALUES (:username, :recipeid)"),
+			{"username": username, "recipeid": recipe_id}
+		)
+		g.conn.commit()
+		flash("Recipe created successfully.", "success")
 
-		return redirect('/recipes')  
+		# redirect to this recipe page
+		return redirect(url_for('recipe', recipe_id=recipe_id))
 	except Exception as e:
+		print(f"Error executing claim/unclaim operation: {e}") 
+		flash("An error occurred while processing your request. Please try again.", "error")
 		return f"Error: {e}"
 
 # edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
@@ -518,22 +528,27 @@ def search_page():
 def search_recipe():
 	username = session.get('username', None)
 
+	# Parse search criteria
 	search_term = request.args.get('searchTerm', '').strip()
 	selected_cuisines = request.args.getlist('cuisines')
 	selected_labels = request.args.getlist('labels')
-	selected_ingredients = request.args.getlist('ingredients')
+	selected_ingredients = request.args.getlist('ingredients[]')
+	if not selected_ingredients[0]:
+		selected_ingredients = []
 	min_likes = request.args.get('min_likes', type=int)
-	cuisines_found = []
-	recipes_found = []
-	labels_found = []
-	ingredients_found = []
-	statement= select(recipes.c.recipeid, recipes.c.title, recipes.c['yield'], recipes.c.calories, recipes.c.text)\
+
+	# Run SQL query to filter recipes
+	statement = select(recipes.c.recipeid, recipes.c.title, recipes.c['yield'], recipes.c.calories, recipes.c.text)\
 		.where(recipes.c.title.ilike(f"%{search_term}%"))
 	if selected_cuisines:
-		statement= statement.join(contains_cuisines, contains_cuisines.c.recipeid == recipes.c.recipeid)\
-			.where(contains_cuisines.c.cuisinename.in_(selected_cuisines))
+		statement = statement.join(contains_cuisines, contains_cuisines.c.recipeid == recipes.c.recipeid)\
+			.group_by(recipes.c.recipeid)\
+			.having(
+				# Ensure the recipe contains at least all selected cuisines
+				func.count(contains_cuisines.c.cuisinename).filter(contains_cuisines.c.cuisinename.in_(selected_cuisines)) == len(selected_cuisines)
+			)
 	if selected_labels:
-		statement= statement.join(contains_labels, contains_labels.c.recipeid == recipes.c.recipeid)\
+		statement = statement.join(contains_labels, contains_labels.c.recipeid == recipes.c.recipeid)\
 			.where(contains_labels.c.labelname.in_(selected_labels))
 	if min_likes:
 		statement = statement.join(
@@ -543,20 +558,12 @@ def search_recipe():
 		statement = statement.join(contains_ingredients, contains_ingredients.c.recipeid == recipes.c.recipeid)\
 			.join(ingredients, ingredients.c.foodid == contains_ingredients.c.foodid)\
 			.where(ingredients.c.food.in_(selected_ingredients))
+			
 	cursor = g.conn.execute(statement)
-	recipes_found= cursor.fetchall()
-	cuisines_query= select(cuisines.c.cuisinename)
-	labels_query= select(labels.c.labelname)
-	ingredients_query= select(ingredients.c.food)
-	cuisines_found= g.conn.execute(cuisines_query).fetchall()
-	labels_found= g.conn.execute(labels_query).fetchall()
-	ingredients_found= g.conn.execute(ingredients_query).fetchall()
+	recipes_found = cursor.fetchall()
 
 	return render_template('recipes.html', 
 							recipes=recipes_found,
-							cuisines=cuisines_found,
-							labels=labels_found,
-							ingredients=ingredients_found,
 							is_logged_in=not username is None,
 							username = username)
 
@@ -567,7 +574,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8457, type=int)
+	@click.argument('PORT', default=8458, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
