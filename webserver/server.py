@@ -14,7 +14,7 @@ DATABASEURI = "postgresql://ts3585:751429@104.196.222.236/proj1part2"
 engine = create_engine(DATABASEURI)
 conn = engine.connect()
 
-metadata=MetaData()
+metadata = MetaData()
 users = Table('users', metadata,
 	Column('username', String(20), primary_key=True, nullable=False),
 	Column('password', String(20), nullable=False)
@@ -32,15 +32,15 @@ ingredients = Table('ingredients', metadata,
 	Column('foodid', String(35), primary_key=True, nullable=False),
 	Column('food', String(100), nullable=False)
 )
-cuisines= Table('cuisines',metadata,
+cuisines = Table('cuisines',metadata,
 	Column('cuisinename',String(20),primary_key=True,nullable=False),
 	Column('text',String,nullable=True)
 )
-labels= Table('labels',metadata,
+labels = Table('labels',metadata,
 	Column('labelname',String(20),primary_key=True,nullable=False),
 	Column('text',String,nullable=True)
 )
-reviews= Table('reviews',metadata,
+reviews = Table('reviews',metadata,
 	Column('reviewid',Integer,primary_key=True,nullable=False),
 	Column('username',String(20),ForeignKey('users.username'),nullable=False),
 	Column('recipeid', String(40),ForeignKey('recipes.recipeid'),nullable=False),
@@ -50,11 +50,11 @@ reviews= Table('reviews',metadata,
 	CheckConstraint('timestamp<= CURRENT_TIMESTAMP',name='timestamp_check')
 )
 
-owns= Table('owns', metadata,
+owns = Table('owns', metadata,
 	Column('username', String(20), ForeignKey('users.username'), primary_key=True, nullable=False),
 	Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False)
 )
-likes= Table('likes', metadata,
+likes = Table('likes', metadata,
 	Column('username', String(20), ForeignKey('users.username'), primary_key=True, nullable=False),
 	Column('recipeid', String(40), ForeignKey('recipes.recipeid', ondelete='CASCADE'), primary_key=True, nullable=False)
 )
@@ -127,6 +127,7 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
+	print("**** logging out")
 	if 'username' in session:
 		del session['username']
 		flash("You have logged out successfully. Directing to home page.", "success")
@@ -246,7 +247,7 @@ def recipe(recipe_id):
 							recipe=recipe,
 							labels=labels,
 							ingredients=ingredients,
-							cuisine=cuisine,
+							cuisine=cuisines,
 							reviews=reviews,
 							like_count=like_count,
 							is_logged_in=True, 
@@ -301,7 +302,7 @@ def delete_recipe(recipe_id):
 		g.conn.execute(text("DELETE FROM recipes WHERE recipeid = :recipeid"),
             {"recipeid": recipe_id})
 		g.conn.commit()
-		flash("Recipe ownership deleted.", "success")
+		flash("Recipe deleted.", "success")
 	except Error as e:
 		print(f"Error executing delete recipe operation: {e}") 
 		flash("An error occurred while processing your request. Please try again.", "error")
@@ -348,29 +349,34 @@ def claim_recipe(recipe_id):
 
 @app.route('/recipes')
 def show_recipes():
-	print("show recipes")
 	username = session.get('username', None)
 	is_logged_in = True if 'username' in session else False
-	cursor= g.conn.execute(text("SELECT * FROM recipes"))
-	recipes= []
+	cursor = g.conn.execute(text("SELECT * FROM recipes"))
+	recipes = []
 	for row in cursor:
 		recipes.append(row)
+	cursor.close()
+
 	return render_template('recipes.html', 
 							recipes=recipes, 
 							is_logged_in=is_logged_in, 
 							username=username)
 
 @app.route('/insert-recipe')
+# TODO: Add a button for insert-recipe somewhere
 def insert_recipe():
 	username = session.get('username', None)
-	label_result = g.conn.execute(text('SELECT labelname FROM labels'))
+	cursor = g.conn.execute(text('SELECT labelname FROM labels'))
 	labels=[]
-	for row in label_result:
+	for row in cursor:
 		labels.append(row)
-	cuisines_result = g.conn.execute(text('SELECT cuisinename FROM cuisines'))
+	cursor.close()
+
+	cursor = g.conn.execute(text('SELECT cuisinename FROM cuisines'))
 	cuisines=[]
-	for row in cuisines_result:
+	for row in cursor:
 		cuisines.append(row)
+	cursor.close()
 
 	return render_template('insertrecipe.html', 
 							labels=labels, 
@@ -380,7 +386,6 @@ def insert_recipe():
 
 @app.route('/submit-review/<recipe_id>', methods=['POST'])
 def submit_review(recipe_id):
-	print("submit-review")
 	username = session.get('username')
 	if not username:
 		return redirect(url_for('login'))
@@ -413,10 +418,9 @@ def submit_review(recipe_id):
 		print("An error occurred while submitting your review:", e)
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 
-
+# TODO: should NOT go ahead with insertion of recipe if there is an issue with ingredient, cuisine, or label insertion
+# TODO: to include text from label + cuisine user insertion 
 @app.route('/submit-recipe', methods=['POST'])
-# Fix: should NOT go ahead with insertion of recipe if there is an issue with ingredient, cuisine, or label insertion
-# Fix: to include text from label + cuisine user insertion 
 def submit_recipe():
 	username = session.get('username', None)	
 	try:
@@ -435,9 +439,11 @@ def submit_recipe():
 		g.conn.execute(recipe_insert)
 		g.conn.commit()
 		ingredients_list = request.form.getlist('ingredients[]')
+
 		def generate_custom_uuid(length=35):
-			uuid_str=str(uuid.uuid4()).replace('-', '')
+			uuid_str="food_" + str(uuid.uuid4()).replace('-', '')
 			return uuid_str[:length]
+			
 		for ingredient in ingredients_list:
 			ingredient_id = generate_custom_uuid()
 			existing_ingredient = select(ingredients.c.food).where(ingredients.c.food == ingredient)
@@ -499,14 +505,11 @@ def submit_recipe():
 		# redirect to this recipe page
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 	except Exception as e:
-		print(f"Error executing claim/unclaim operation: {e}") 
+		print(f"Error executing submit recipe operation: {e}") 
 		flash("An error occurred while processing your request. Please try again.", "error")
 		return f"Error: {e}"
 
-# edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
-# delete recipe but if you the owner (add delete button on frontend)
-# write a review + display existing reviews
-# search functionality:
+# TODO: edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
 # TODO: need a button to show all recipes
 @app.route('/')
 @app.route('/search')
@@ -537,29 +540,44 @@ def search_recipe():
 	min_likes = request.args.get('min_likes', type=int)
 
 	# Run SQL query to filter recipes
+	filters = []
 	statement = select(recipes.c.recipeid, recipes.c.title, recipes.c['yield'], recipes.c.calories, recipes.c.text)\
 		.where(recipes.c.title.ilike(f"%{search_term}%"))
+
 	if selected_cuisines:
-		statement = statement.join(contains_cuisines, contains_cuisines.c.recipeid == recipes.c.recipeid)\
-			.group_by(recipes.c.recipeid)\
-			.having(
-				# Ensure the recipe contains at least all selected cuisines
-				func.count(contains_cuisines.c.cuisinename).filter(contains_cuisines.c.cuisinename.in_(selected_cuisines)) == len(selected_cuisines)
-			)
+		statement = statement.join(contains_cuisines, contains_cuisines.c.recipeid == recipes.c.recipeid)
+		filters.append(func.count(func.distinct(contains_cuisines.c.cuisinename)).filter(
+            contains_cuisines.c.cuisinename.in_(selected_cuisines)
+        ) == len(selected_cuisines))
+	
 	if selected_labels:
-		statement = statement.join(contains_labels, contains_labels.c.recipeid == recipes.c.recipeid)\
-			.where(contains_labels.c.labelname.in_(selected_labels))
+		statement = statement.join(contains_labels, contains_labels.c.recipeid == recipes.c.recipeid)
+		filters.append(func.count(func.distinct(contains_labels.c.labelname)).filter(
+            contains_labels.c.labelname.in_(selected_labels)
+        ) == len(selected_labels))
+
 	if min_likes:
-		statement = statement.join(
-			likes, likes.c.recipeid == recipes.c.recipeid
-		).group_by(recipes.c.recipeid).having(func.count(likes.c.recipeid) >= min_likes)
+		statement = statement.join(likes, likes.c.recipeid == recipes.c.recipeid)
+		filters.append(func.count(likes.c.recipeid) >= min_likes)
+
 	if selected_ingredients:
-		statement = statement.join(contains_ingredients, contains_ingredients.c.recipeid == recipes.c.recipeid)\
-			.join(ingredients, ingredients.c.foodid == contains_ingredients.c.foodid)\
-			.where(ingredients.c.food.in_(selected_ingredients))
-			
+		statement = statement.join(contains_ingredients, contains_ingredients.c.recipeid == recipes.c.recipeid)
+		statement = statement.join(ingredients, ingredients.c.foodid == contains_ingredients.c.foodid)
+		filters.append(func.count(func.distinct(ingredients.c.food)).filter(
+            ingredients.c.food.in_(selected_ingredients)
+        ) == len(selected_ingredients))
+
+	# Group by recipe id
+	statement = statement.group_by(recipes.c.recipeid)
+	# Combine all filter conditions using AND logic
+	if filters:
+		statement = statement.having(*filters)
+
+	recipes_found = []
 	cursor = g.conn.execute(statement)
-	recipes_found = cursor.fetchall()
+	for recipe in cursor:
+		recipes_found.append(recipe)
+	cursor.close()
 
 	return render_template('recipes.html', 
 							recipes=recipes_found,
