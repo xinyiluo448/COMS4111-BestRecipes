@@ -41,6 +41,9 @@
             <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
                 <button type="submit">Unclaim</button>
             </form>
+            <form method="POST" action="{{ url_for('delete_recipe', recipe_id=recipe.recipeid) }}">
+                <button type="submit">Delete</button>
+            </form>
         {% elif owned_by_user is none %}
             <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
                 <button type="submit">Claim</button>

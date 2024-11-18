@@ -272,12 +272,41 @@ def like_recipe(recipe_id):
 	).scalar()
 	return str(like_count)
 
+@app.route('/delete/<recipe_id>', methods=['POST'])
+def delete_recipe(recipe_id):
+	username = session.get('username', None)
+	if not username:
+		flash("You must be logged in and is owner to delete a recipe", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+	
+	owned_by_user = g.conn.execute(
+		text("SELECT username FROM owns WHERE recipeid = :recipeid"),
+		{"recipeid": recipe_id}
+	).fetchone()
+
+	owned_by_user = owned_by_user[0] if owned_by_user else None
+	if not owned_by_user or (owned_by_user and owned_by_user != username):
+		flash("You are not the owner of the recipe.", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+	
+	try:
+		g.conn.execute(text("DELETE FROM recipes WHERE recipeid = :recipeid"),
+            {"recipeid": recipe_id})
+		g.conn.commit()
+		flash("Recipe ownership deleted.", "success")
+	except Error as e:
+		print(f"Error executing delete recipe operation: {e}") 
+		flash("An error occurred while processing your request. Please try again.", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+	
+	return redirect('/')
+
 @app.route('/claim/<recipe_id>', methods=['POST'])
 def claim_recipe(recipe_id):
 	username = session.get('username', None)
 	if not username:
 		flash("You must be logged in to claim a recipe", "error")
-		return redirect(url_for('login'))
+		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 	owned_by_user = g.conn.execute(
 		text("SELECT username FROM owns WHERE recipeid = :recipeid"),
