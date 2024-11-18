@@ -26,11 +26,7 @@
         .flash-message.success {
             background-color: #d4edda;
             color: #155724;
-        }
-        .flash-message.info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }      
+        } 
     </style>
 </head>
 <body>
@@ -51,6 +47,10 @@
 
     {% if is_logged_in %}
       <a id="login-profile-link" href="{{ url_for('profile') }}">Welcome {{ username }}</a>
+
+      <form id="logout-form" method="POST" action="{{ url_for('logout') }}">
+        <a href="#" onclick="document.getElementById('logout-form').submit();">Log out</a>
+      </form>
     {% else %}
       <a id="login-profile-link" href="{{ url_for('login') }}">Log in</a>
     {% endif %}

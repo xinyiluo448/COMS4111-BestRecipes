@@ -124,6 +124,13 @@ def login():
 
 	return render_template("login.html")
 
+@app.route('/logout', methods=['POST'])
+def logout():
+	if 'username' in session:
+		del session['username']
+		flash("You have logged out successfully. Directing to home page.", "success")
+	return redirect('/')
+
 @app.route('/profile')
 @app.route('/profile/<username>')
 def profile(username = None):
@@ -382,8 +389,7 @@ def submit_review(recipe_id):
 	content = request.form.get('text')
 	print(title, text)
 	if not title or not text:
-		print("No title or text")
-		flash('Please fill out both the title and the text of the review.')
+		flash('Please fill out both the title and the text of the review.', "error")
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 	try:
@@ -399,7 +405,7 @@ def submit_review(recipe_id):
 				"title": title,
 				"text": content})
 		g.conn.commit()
-		flash('Your review has been submitted successfully!')
+		flash('Your review has been submitted successfully!', "success")
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 
 	except Exception as e:
