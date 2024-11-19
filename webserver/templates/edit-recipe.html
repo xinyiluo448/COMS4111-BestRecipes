@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Edit Recipe</h1>
+    <form action="{{ url_for('submit_edited_recipe', recipe_id=recipe.recipeid) }}" method="POST">
+        <p>
+            <label for="recipe-title">Recipe Title</label>
+            <input type="text" id="recipe-title" name="recipe-title" value="{{ recipe.title }}" size="35">
+        </p>
+        <p>
+            <label for="yield">Yield</label>
+            <input type="number" id="yield" name="yield" value="{{ recipe.yield }}" min="1" size="35">
+        </p>
+        <p>
+            <label for="calories">Calories</label>
+            <input type="number" id="calories" name="calories" value="{{ recipe.calories }}" min="0" size="35">
+        </p>
+        <p>
+            <label for="description">Description</label>
+            <textarea id="description" name="description" cols="40" rows="5">{{ recipe.text }}</textarea>
+        </p>
+        
+        <h2>Ingredients</h2>
+        <div id="ingredients-container">
+            {% for ingredient in ingredients_list %}
+                <p>
+                    <label for="ingredient-{{ loop.index }}">Ingredient {{ loop.index }}</label>
+                    <input type="text" id="ingredient-{{ loop.index }}" name="ingredients[]" value="{{ ingredient.food }}" size="35">
+                </p>
+            {% endfor %}
+        </div>
+        <button type="button" onclick="addIngredient()">Add More Ingredients</button>
+        <script>
+            let ingredientCount = parseInt("{{ ingredient_count }}"); //get from back end to see existing ingredients count, process as an int
+            function addIngredient() 
+            {
+                //Increase ingredientCount to represent new ingredient being added
+                ingredientCount++; 
+                // This line access div created earlier 'ingredients-container'
+                const container = document.getElementById("ingredients-container");
+                // New input is created 
+                const newIngredient = document.createElement("p");
+                //This innerHTML function is basically utilizing the same code from the ingredients-container HTML except that there are variables instead of hard-coded things like 'Ingredient 1'
+                // This ensures that each ingredient has a unique id and label, making it easier to access on the backend later
+                newIngredient.innerHTML = `
+                    <label for="ingredient-${ingredientCount}">Ingredient ${ingredientCount}</label>
+                    <input type="text" id="ingredient-${ingredientCount}" name="ingredients[]" placeholder="Enter an ingredient" size="35">
+                `;
+                // This adds the newly created ingredient to the existing container(div from earlier)
+                container.appendChild(newIngredient);
+            }
+        </script>
+        <h2>Labels</h2>
+        <div>
+            {% for label in labels_list %}
+                <p>
+                    <input type="checkbox" id="label-{{ label.labelname }}" name="labels[]" value="{{ label.labelname }}"
+                        {% if label.labelname in recipe_labels %} checked {% endif %}>
+                    <label for="label-{{ label.labelname }}">{{ label.labelname }}</label>
+                </p>
+            {% endfor %}
+        </div>
+        <p>
+            <label for="new-label">Add a New Label:</label>
+            <input type="text" id="new-label" name="new-label" placeholder="Enter a new label">
+        </p>
+        
+        <h2>Cuisine</h2>
+        <div>
+            {% for cuisine in cuisines_list %}
+                <p>
+                    <input type="checkbox" id="cuisine-{{ cuisine.cuisinename }}" name="cuisines[]" value="{{ cuisine.cuisinename }}"
+                        {% if cuisine.cuisinename in recipe_cuisines %} checked {% endif %}>
+                    <label for="cuisine-{{ cuisine.cuisinename }}">{{ cuisine.cuisinename }}</label>
+                </p>
+            {% endfor %}
+        </div>
+        <p>
+            <label for="new-cuisine">Add a New Cuisine:</label>
+            <input type="text" id="new-cuisine" name="new-cuisine" placeholder="Enter a new cuisine">
+        </p>
+        <button type="submit">Submit Changes</button>
+    </form>
+{% endblock %}
