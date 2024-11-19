@@ -562,6 +562,10 @@ def submit_edited_recipe(recipe_id):
 	new_label = request.form.get('new-label')
 	new_label_text = request.form['new-label-text']
 
+	if not ingredients_list or (not cuisines_list and not new_cuisine) or (not labels_list and not new_label):
+		flash("Input cannot be empty for any of the fields", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+
 	with g.conn.begin():
 		current_recipe = g.conn.execute(
             recipes.select().where(recipes.c.recipeid == recipe_id)
