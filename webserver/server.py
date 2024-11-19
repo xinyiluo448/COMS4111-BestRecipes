@@ -535,6 +535,7 @@ def submit_edited_recipe(recipe_id):
 	form_calories = request.form.get('calories')
 	form_description =  request.form.get('description')
 	ingredients_list = request.form.getlist('ingredients[]')
+	ingredients_list = [item for item in ingredients_list if item]
 	cuisines_list = request.form.getlist('cuisines[]')
 	labels_list= request.form.getlist('labels[]')
 	new_cuisine = request.form.get('new-cuisine')
@@ -578,7 +579,7 @@ def submit_edited_recipe(recipe_id):
 				food_id = generate_custom_uuid()
 				new_ingredient = insert(ingredients).values(
 					food=ingredient,
-					foodid=ingredient_id
+					foodid=food_id
 				)
 				g.conn.execute(new_ingredient)
 			new_insert = insert(contains_ingredients).values(
