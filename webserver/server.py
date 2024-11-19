@@ -164,26 +164,25 @@ def profile(username = None):
 			reviews.append(review)
 		cursor.close()
 
-		query_recipes = text("""
+		recipes = []
+		cursor = g.conn.execute(text("""
 			SELECT re.recipeId, re.title, re.yield, re.text, re.calories 
 			FROM Recipes re
 			JOIN Owns o ON o.recipeId = re.recipeId
 			WHERE o.userName = :name
-		""")
-		recipes = []
-		cursor = g.conn.execute(query_recipes, {"name": username})
+		"""), {"name": username})
 		for recipe in cursor:
 			recipes.append(recipe)
 		cursor.close()
 
-		query_liked_recipes = text("""
+		liked_recipes = []
+		cursor = g.conn.execute(text("""
 			SELECT r.recipeId, r.title
 			FROM Recipes r
-			JOIN Likes l ON r.recipeId = l.recipeId
+			JOIN Likes l ON l.recipeId = r.recipeId
 			WHERE l.userName = :username;
-		""")
-		liked_recipes = []
-		cursor = g.conn.execute(query_recipes, {"name": username})
+		"""), {"username": username})
+
 		for recipe in cursor:
 			liked_recipes.append(recipe)
 		cursor.close()
@@ -260,6 +259,10 @@ def recipe(recipe_id):
 @app.route('/like/<recipe_id>', methods=['POST'])
 def like_recipe(recipe_id):
 	username = session.get('username', None)
+	if not username:
+		flash("Please log in first to like a recipe", "error")
+		return redirect(url_for('login'))
+	
 	existing_like = g.conn.execute(
 		text('SELECT 1 FROM likes WHERE username = :username AND recipeid = :recipeid'),
 		{'username': username, 'recipeid': recipe_id}
@@ -269,19 +272,18 @@ def like_recipe(recipe_id):
 			g.conn.execute(insert(likes).values(username=username, recipeid=recipe_id))
 			g.conn.commit()
 		except Exception as e:
-			return f"Failed to like the recipe: {e}", 400
+			flash(f"Failed to like the recipe: {e}", "error")
+			return redirect(url_for('recipe', recipe_id=recipe_id))
 	else:
 		try:
 			g.conn.execute(delete(likes).where(likes.c.username == username).where(likes.c.recipeid == recipe_id))
 			g.conn.commit()
 		except Exception as e:
-			return f"Failed to unlike the recipe: {e}", 400
-
-	like_count = g.conn.execute(
-		text('SELECT COUNT(*) FROM likes WHERE recipeid = :recipeid'),
-		{'recipeid': recipe_id}
-	).scalar()
-	return str(like_count)
+			flash(f"Failed to unlike the recipe: {e}", "error")
+			return redirect(url_for('recipe', recipe_id=recipe_id))
+	
+	flash(f"Your request was processed successfully", "success")
+	return redirect(url_for('recipe', recipe_id=recipe_id))
 
 @app.route('/delete/<recipe_id>', methods=['POST'])
 def delete_recipe(recipe_id):
@@ -595,6 +597,7 @@ def submit_edited_recipe(recipe_id):
 			)
 		flash("Recipe updated successfully.", "success")
 		return redirect(url_for('recipe', recipe_id=recipe_id))
+
 @app.route('/edit/<recipe_id>')
 def edit_recipe(recipe_id):
 	recipe_query = select(recipes).where(recipes.c.recipeid == recipe_id)
@@ -711,7 +714,7 @@ if __name__ == "__main__":
 	@click.option('--debug', is_flag=True)
 	@click.option('--threaded', is_flag=True)
 	@click.argument('HOST', default='0.0.0.0')
-	@click.argument('PORT', default=8458, type=int)
+	@click.argument('PORT', default=8459, type=int)
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))

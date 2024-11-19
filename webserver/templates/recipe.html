@@ -40,13 +40,16 @@
     <p>{{ recipe.text }}</p>
 
     {% if is_logged_in %}
-        <button id="like-button" onclick="likeRecipe()">
-            {% if has_liked %}
-                Unlike
-            {% else %}
-                Like
-            {% endif %}
-        </button>
+        <form method="POST" action="{{ url_for('like_recipe', recipe_id=recipe.recipeid) }}">
+            <button type="submit">
+                {% if has_liked %}
+                    Unlike
+                {% else %}
+                    Like
+                {% endif %}
+            </button>
+        </form>
+
         {% if owned_by_user == username %}
             <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
                 <button type="submit">Unclaim</button>
@@ -102,21 +105,4 @@
             <p>No reviews yet for this recipe.</p>
         {% endif %}
 
-
-    <script>
-        function likeRecipe() {
-            fetch('/like/{{ recipe.recipeid }}', {
-                method: 'POST',
-            })
-            .then(response => response.text())
-            .then(data => {
-                // Update the like count on the page
-                document.getElementById('like-count').textContent = data;
-                // Toggle like and unlike
-                let button = document.getElementById('like-button');
-                button.textContent = button.textContent === 'Like' ? 'Unlike' : 'Like';
-            })
-            .catch(error => console.error('Error:', error));
-        }
-    </script>
 {% endblock %}
