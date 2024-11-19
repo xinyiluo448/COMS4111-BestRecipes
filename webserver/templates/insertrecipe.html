@@ -56,14 +56,12 @@
                     Labels!
                 </h2>
                 <p>
-                    <label for="existing-labels">Select Labels:</label>
-                    <select id="existing-labels" name="labels[]" multiple>
-                        {% for label in labels %}
-                            <option value="{{ label.labelname }}">{{ label.labelname }}</option>
-                        {% endfor %}
-                    </select>
+                    <label>Select Labels:</label><br>
+                    {% for label in labels %}
+                        <input type="checkbox" id="label-{{ loop.index }}" name="labels[]" value="{{ label.labelname }}">
+                        <label for="label-{{ loop.index }}">{{ label.labelname }}</label><br>
+                    {% endfor %}
                 </p>
-        
                 <p>
                     <label for="new-label">Add a New Label:</label>
                     <input type="text" id="new-label" name="new-label" placeholder="Enter a new label">
@@ -72,12 +70,11 @@
                     Cuisine!
                 </h2>
                 <p>
-                    <label for="existing-cuisines">Select Cuisines:</label>
-                    <select id="existing-cuisines" name="cuisines[]" multiple>
-                        {% for cuisine in cuisines %}
-                            <option value="{{ cuisine.cuisinename }}">{{ cuisine.cuisinename }}</option>
-                        {% endfor %}
-                    </select>
+                    <label>Select Cuisines:</label><br>
+                    {% for cuisine in cuisines %}
+                        <input type="checkbox" id="cuisine-{{ loop.index }}" name="cuisines[]" value="{{ cuisine.cuisinename }}">
+                        <label for="cuisine-{{ loop.index }}">{{ cuisine.cuisinename }}</label><br>
+                    {% endfor %}
                 </p>
         
                 <p>
