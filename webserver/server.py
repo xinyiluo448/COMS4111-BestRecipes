@@ -447,7 +447,7 @@ def submit_recipe():
 			errors.append("Recipe description is required.")
 		if not ingredients_list:
 			errors.append("At least one ingredient is required.")
-		if not cuisines_list or new_cuisine:
+		if not cuisines_list and not new_cuisine:
 			errors.append("At least one cuisine is required.")
 		if errors:
 			for error in errors:
@@ -486,25 +486,27 @@ def submit_recipe():
 				g.conn.execute(new_insert)
 			labels_list = request.form.getlist('labels[]')
 			new_label = request.form['new-label']
+			new_label_text = request.form['new-label-text']
 			if new_label:
 				labels_list.append(new_label)
 			for label in labels_list:
 				existing_label = select(labels.c.labelname).where(labels.c.labelname == label)
 				cursor= g.conn.execute(existing_label).fetchone()
 				if not cursor:
-					new_label_insert = insert(labels).values(labelname=label, text=None)
+					new_label_insert = insert(labels).values(labelname=label, text=new_label_text)
 					g.conn.execute(new_label_insert)
 				label_insert = insert(contains_labels).values(recipeid=recipe_id, labelname=label)
 				g.conn.execute(label_insert)
 			cuisines_list = request.form.getlist('cuisines[]')
 			new_cuisine = request.form['new-cuisine']
+			new_cuisine_text = request.form['new-cuisine-text']
 			if new_cuisine.strip():
 				cuisines_list.append(new_cuisine.strip())
 			for cuisine in cuisines_list:
 				existing_cuisine = select(cuisines.c.cuisinename).where(cuisines.c.cuisinename == cuisine)
 				cursor = g.conn.execute(existing_cuisine).fetchone()
 				if not cursor:
-					fresh_insert = insert(cuisines).values(cuisinename=cuisine)
+					fresh_insert = insert(cuisines).values(cuisinename=cuisine, text=new_cuisine_text)
 					g.conn.execute(fresh_insert)
 				cuisines_insert = insert(contains_cuisines).values(recipeid=recipe_id, cuisinename=cuisine)
 				g.conn.execute(cuisines_insert)
@@ -539,7 +541,9 @@ def submit_edited_recipe(recipe_id):
 	cuisines_list = request.form.getlist('cuisines[]')
 	labels_list= request.form.getlist('labels[]')
 	new_cuisine = request.form.get('new-cuisine')
+	new_cuisine_text = request.form['new-cuisine-text']
 	new_label = request.form.get('new-label')
+	new_label_text = request.form['new-label-text']
 
 	with g.conn.begin():
 		current_recipe = g.conn.execute(
@@ -588,6 +592,7 @@ def submit_edited_recipe(recipe_id):
 			)
 			g.conn.execute(new_insert)
 
+		# Cuisines
 		g.conn.execute(
             contains_cuisines.delete().where(contains_cuisines.c.recipeid == recipe_id)
         )
@@ -598,11 +603,15 @@ def submit_edited_recipe(recipe_id):
                 )
             )
 		if (new_cuisine):
+			new_cuisine_insert = insert(cuisines).values(cuisinename=new_cuisine, text=new_cuisine_text)
+			g.conn.execute(new_cuisine_insert)
 			g.conn.execute(
 				contains_cuisines.insert().values(
-					recipeid=recipe_id, cuisename=new_cuisine
+					recipeid=recipe_id, cuisinename=new_cuisine
 				)
 			)
+
+		# Labels
 		g.conn.execute(
             contains_labels.delete().where(contains_cuisines.c.recipeid == recipe_id)
         )
@@ -613,9 +622,11 @@ def submit_edited_recipe(recipe_id):
                 )
             )
 		if(new_label):
+			new_label_insert = insert(labels).values(labelname=new_label, text=new_label_text)
+			g.conn.execute(new_label_insert)
 			g.conn.execute(
 				contains_labels.insert().values(
-					recipeid=recipe_id,labelname=new_label
+					recipeid=recipe_id, labelname=new_label
 				)
 			)
 		flash("Recipe updated successfully.", "success")
