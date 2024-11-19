@@ -15,9 +15,11 @@
     </p>
     <p><strong>Cuisine:</strong> 
         {% if cuisines %}
-            {% for cuisine in cuisines %}
-            {{ cuisine.cuisinename }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
+            <i>
+                {% for cuisine in cuisines %}
+                    {{ cuisine.cuisinename }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </i>
         {% else %}
             No cuisines available.
         {% endif %}
@@ -51,6 +53,9 @@
             </form>
             <form method="POST" action="{{ url_for('delete_recipe', recipe_id=recipe.recipeid) }}">
                 <button type="submit">Delete</button>
+            </form>
+            <form method="GET" action="{{ url_for('edit_recipe', recipe_id=recipe.recipeid) }}">
+                <button type="submit">Edit</button>
             </form>
         {% elif owned_by_user is none %}
             <form method="POST" action="{{ url_for('claim_recipe', recipe_id=recipe.recipeid) }}">
