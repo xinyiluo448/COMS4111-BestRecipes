@@ -366,6 +366,10 @@ def show_recipes():
 							is_logged_in=is_logged_in, 
 							username=username)
 
+def generate_custom_uuid(length=35):
+	uuid_str = "food_" + str(uuid.uuid4()).replace('-', '')
+	return uuid_str[:length]	
+
 @app.route('/insert-recipe')
 def insert_recipe():
 	username = session.get('username', None)
@@ -459,9 +463,7 @@ def submit_recipe():
 				calories=calories
 			)
 			g.conn.execute(recipe_insert)
-			def generate_custom_uuid(length=35):
-				uuid_str="food_" + str(uuid.uuid4()).replace('-', '')
-				return uuid_str[:length]	
+
 			for ingredient in ingredients_list:
 				ingredient_id = generate_custom_uuid()
 				existing_ingredient = select(ingredients.c.food).where(ingredients.c.food == ingredient)
@@ -473,12 +475,12 @@ def submit_recipe():
 					)
 					g.conn.execute(new_ingredient)
 			for ingredient in ingredients_list:
-				curr_ingredient=select(ingredients.c.foodid).where(ingredients.c.food == ingredient)
+				curr_ingredient = select(ingredients.c.foodid).where(ingredients.c.food == ingredient)
 				cursor = g.conn.execute(curr_ingredient).fetchone()
 				if cursor:
-					food_id= cursor[0] 
-					new_insert= insert(contains_ingredients).values(
-					recipeid= recipe_id,
+					food_id = cursor[0] 
+					new_insert = insert(contains_ingredients).values(
+					recipeid=recipe_id,
 					foodid=food_id
 				)
 				g.conn.execute(new_insert)
@@ -521,50 +523,70 @@ def submit_recipe():
 		flash("An error occurred while processing your request. Please try again.", "error")
 		return f"Error: {e}"
 
-# TODO: edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
-# TODO: edit recipe BUT only if you are the owner-> redirects to something like insert recipe page (add edit button on frontend)
 @app.route('/submit-edited-recipe/<recipe_id>', methods=['POST'])
 def submit_edited_recipe(recipe_id):
-	form_title= request.form.get('recipe-title')
-	form_yield_value= request.form.get('yield')
-	form_calories= request.form.get('calories')
+	username = session.get('username', None)
+	if not username:
+		flash("You must be logged in and is owner to edit a recipe", "error")
+		return redirect(url_for('recipe', recipe_id=recipe_id))
+
+	form_title = request.form.get('recipe-title')
+	form_yield_value = request.form.get('yield')
+	form_calories = request.form.get('calories')
 	form_description =  request.form.get('description')
 	ingredients_list = request.form.getlist('ingredients[]')
 	cuisines_list = request.form.getlist('cuisines[]')
 	labels_list= request.form.getlist('labels[]')
 	new_cuisine = request.form.get('new-cuisine')
 	new_label = request.form.get('new-label')
+
 	with g.conn.begin():
 		current_recipe = g.conn.execute(
             recipes.select().where(recipes.c.recipeid == recipe_id)
         ).fetchone()
 		if form_title != current_recipe[1]:
-			update_recipe= recipes.update().where(recipes.c.recipeid == recipe_id).values(
+			update_recipe = recipes.update().where(recipes.c.recipeid == recipe_id).values(
                 title=form_title
             )
 			g.conn.execute(update_recipe)
 		if form_yield_value != current_recipe[2]:
-			update_recipe= recipes.update().where(recipes.c.recipeid == recipe_id).values(
+			update_recipe = recipes.update().where(recipes.c.recipeid == recipe_id).values(
                 **{'yield': form_yield_value}
             )
 			g.conn.execute(update_recipe)
 		if form_calories != current_recipe[4]:
-			update_recipe= recipes.update().where(recipes.c.recipeid == recipe_id).values(
+			update_recipe = recipes.update().where(recipes.c.recipeid == recipe_id).values(
                 calories=form_calories
             )
 			g.conn.execute(update_recipe)
 		if form_description != current_recipe[3]:
-			update_recipe= recipes.update().where(recipes.c.recipeid == recipe_id).values(
+			update_recipe = recipes.update().where(recipes.c.recipeid == recipe_id).values(
                 text=form_description
 			)
 			g.conn.execute(update_recipe)
-		current_ingredients = g.conn.execute(
-    	 contains_ingredients.select().where(contains_ingredients.c.recipeid == recipe_id)
-		).fetchall()
-		current_ingredient_ids = {ingredient[0] for ingredient in current_ingredients}
-		def generate_custom_uuid(length=35):
-				uuid_str="food_" + str(uuid.uuid4()).replace('-', '')
-				return uuid_str[:length]
+		
+		# Delete all ingredients from contains_ingredients that match this recipe
+		g.conn.execute(text('DELETE FROM contains_ingredients WHERE recipeid = :recipeid'), {'recipeid': recipe_id})
+		# Insert new ingredients
+		for ingredient in ingredients_list:
+			ingredient_query = select(ingredients.c.foodid).where(ingredients.c.food == ingredient)
+			cursor = g.conn.execute(ingredient_query).fetchone()
+			if cursor:
+				food_id = cursor[0] 
+			else:
+				# Insert non-existent ingredient in ingredients
+				food_id = generate_custom_uuid()
+				new_ingredient = insert(ingredients).values(
+					food=ingredient,
+					foodid=ingredient_id
+				)
+				g.conn.execute(new_ingredient)
+			new_insert = insert(contains_ingredients).values(
+				recipeid=recipe_id,
+				foodid=food_id
+			)
+			g.conn.execute(new_insert)
+
 		g.conn.execute(
             contains_cuisines.delete().where(contains_cuisines.c.recipeid == recipe_id)
         )
@@ -577,7 +599,7 @@ def submit_edited_recipe(recipe_id):
 		if (new_cuisine):
 			g.conn.execute(
 				contains_cuisines.insert().values(
-					recipeid=recipe_id,cuisename=new_cuisine
+					recipeid=recipe_id, cuisename=new_cuisine
 				)
 			)
 		g.conn.execute(
