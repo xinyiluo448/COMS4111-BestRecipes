@@ -128,7 +128,7 @@ def login():
 
 	return render_template("login.html")
 
-@app.route('/logout', methods=['POST'])
+@app.route('/logout', methods=['GET'])
 def logout():
 	if 'username' in session:
 		del session['username']
