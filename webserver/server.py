@@ -130,7 +130,6 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-	print("**** logging out")
 	if 'username' in session:
 		del session['username']
 		flash("You have logged out successfully. Directing to home page.", "success")
@@ -399,7 +398,7 @@ def submit_review(recipe_id):
 
 	title = request.form.get('title')
 	content = request.form.get('text')
-	print(title, text)
+
 	if not title or not text:
 		flash('Please fill out both the title and the text of the review.', "error")
 		return redirect(url_for('recipe', recipe_id=recipe_id))
@@ -424,7 +423,24 @@ def submit_review(recipe_id):
 		flash(f'An error occurred while submitting your review: {str(e)}')
 		print("An error occurred while submitting your review:", e)
 		return redirect(url_for('recipe', recipe_id=recipe_id))
-# TODO: to include text from label + cuisine user insertion 
+
+@app.route('/show-cuisines-labels')
+def show_cuisines_labels():
+	username = session.get('username', None)
+	statement = select(cuisines)
+	statement2 = select(labels)
+	cursor = g.conn.execute(statement)
+	cuisines_list = [row for row in cursor]
+	cursor.close()
+	cursor = g.conn.execute(statement2)
+	labels_list = [row for row in cursor]
+	cursor.close()
+	return render_template('all-labels-cuisines.html', 
+							labels=labels_list, 
+							cuisines=cuisines_list, 
+							is_logged_in=not username is None,
+							username=username)
+
 @app.route('/submit-recipe', methods=['POST'])
 def submit_recipe():
 	username = session.get('username', None)

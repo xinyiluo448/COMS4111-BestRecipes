@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Labels and Cuisines</h1>
+
+    <h2>Cuisines</h2>
+    <ul>
+        {% for cuisine in cuisines %}
+        <li>
+            <strong>{{ cuisine.cuisinename }}</strong><br>
+            {{ cuisine.text }}
+        </li>
+        {% endfor %}
+    </ul>
+
+    <h2>Labels</h2>
+    <ul>
+        {% for label in labels %}
+        <li>
+            <strong>{{ label.labelname }}</strong><br>
+            {{ label.text }}
+        </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
