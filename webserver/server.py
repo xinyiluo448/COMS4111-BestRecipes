@@ -564,8 +564,7 @@ def submit_edited_recipe(recipe_id):
 
 	if (not form_title) or (not form_yield_value) or (not form_calories) \
 		or (not form_description) or (not ingredients_list) or \
-		(not cuisines_list and not new_cuisine) or \
-		(not labels_list and not new_label):
+		(not cuisines_list and not new_cuisine):
 		flash("Input cannot be empty for any of the fields", "error")
 		return redirect(url_for('recipe', recipe_id=recipe_id))
 
