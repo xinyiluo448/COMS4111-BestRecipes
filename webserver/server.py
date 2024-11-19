@@ -451,6 +451,7 @@ def submit_recipe():
 		calories = request.form['calories']
 		description = request.form['description']
 		ingredients_list = request.form.getlist('ingredients[]')
+		ingredients_list = [item for item in ingredients_list if item]
 		cuisines_list = request.form.getlist('cuisines[]')
 		new_cuisine = request.form['new-cuisine']
 		if not title or title.strip() == "":
