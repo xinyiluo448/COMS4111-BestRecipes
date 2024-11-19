@@ -768,5 +768,5 @@ if __name__ == "__main__":
 	def run(debug, threaded, host, port):
 		HOST, PORT = host, port
 		print("running on %s:%d" % (HOST, PORT))
-		app.run(host=HOST, port=PORT, debug=True, threaded=True)
+		app.run(host=HOST, port=PORT, debug=debug, threaded=True)
 	run()
